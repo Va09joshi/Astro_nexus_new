@@ -23,51 +23,57 @@ app.set("trust proxy", 1);
 
 const PORT = process.env.PORT || 8001;
 
-// Fix __dirname in ESM
+// Fix __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --------------------------
-// MongoDB Connection
-// --------------------------
+// ------------------------------------------------------
+// ✅ MongoDB Connection
+// ------------------------------------------------------
 connectToMongoDB(process.env.MONGODB_URI)
   .then(() => console.log("✓ MongoDB connected"))
   .catch((err) => {
     console.error("✗ MongoDB connection error:", err);
-    process.exit(1);
+    process.exit(1); // stop server if DB fails
   });
 
-// --------------------------
+// ------------------------------------------------------
 // View Engine
-// --------------------------
+// ------------------------------------------------------
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// --------------------------
-// Middleware
-// --------------------------
-app.use(cors({ origin: true, credentials: true }));
+// ------------------------------------------------------
+// Middlewares
+// ------------------------------------------------------
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://astro-nexus.onrender.com"],
+    credentials: true,
+  })
+);
+
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// --------------------------
-// Astro Predictions API
-// --------------------------
+// ------------------------------------------------------
+// Prediction APIs
+// ------------------------------------------------------
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute);
 
-// --------------------------
-// Health Route
-// --------------------------
+// ------------------------------------------------------
+// Health Check
+// ------------------------------------------------------
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", time: new Date().toISOString() });
 });
 
-// --------------------------
+// ------------------------------------------------------
 // Short URL Redirect
-// --------------------------
+// ------------------------------------------------------
 app.get("/url/:shortId", async (req, res) => {
   try {
     const { shortId } = req.params;
@@ -78,50 +84,47 @@ app.get("/url/:shortId", async (req, res) => {
       { new: true }
     );
 
-    if (!entry) {
-      return res.status(404).json({ error: "Short URL not found" });
-    }
+    if (!entry) return res.status(404).json({ error: "Short URL not found" });
 
     return res.redirect(entry.redirectURL);
   } catch (error) {
     console.error("Redirect error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// --------------------------
+// ------------------------------------------------------
 // API Routes
-// --------------------------
+// ------------------------------------------------------
 app.use("/api/url", authenticateToken, urlRoute);
 app.use("/user", userRoute);
 
-// --------------------------
-// Web Routes
-// --------------------------
+// ------------------------------------------------------
+// Static Website Pages
+// ------------------------------------------------------
 app.use("/", optionalAuth, staticRoute);
 
-// --------------------------
+// ------------------------------------------------------
 // 404 Handler
-// --------------------------
+// ------------------------------------------------------
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// --------------------------
-// Global Error Handler
-// --------------------------
+// ------------------------------------------------------
+// Error Handler
+// ------------------------------------------------------
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
+  console.error("❌ Global Error:", err);
   res.status(err.status || 500).json({
     error: err.message || "Internal server error",
   });
 });
 
-// --------------------------
-// Start Server
-// --------------------------
+// ------------------------------------------------------
+// Server Start
+// ------------------------------------------------------
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✓ Server started on port ${PORT}`);
-  console.log(`✓ Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
 });
-
