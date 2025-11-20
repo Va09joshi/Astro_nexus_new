@@ -9,7 +9,7 @@ import morgan from "morgan";
 import { fileURLToPath } from "url";
 
 import { connectToMongoDB } from "./connect.js";
-import { authenticateToken, optionalAuth } from "./middlewares/auth.js"; // removed unused authenticateTokenForWeb
+import { authenticateToken, optionalAuth } from "./middlewares/auth.js";
 import URL from "./models/url.js";
 
 import predictionsRoute from "./routes/predictions.js";
@@ -19,7 +19,7 @@ import staticRoute from "./routes/staticRouter.js";
 import userRoute from "./routes/user.js";
 
 const app = express();
-app.set("trust proxy", 1);   // <--- REQUIRED on Render
+app.set("trust proxy", 1);
 
 const PORT = process.env.PORT || 8001;
 
@@ -49,16 +49,8 @@ app.set("views", path.join(__dirname, "views"));
 app.use(cors({ origin: true, credentials: true }));
 app.use(morgan("dev"));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // true is safer for complex objects
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
-// --------------------------
-// Rate Limiters
-// --------------------------
-
-// app.use("/api", generalLimiter);
-app.use("/user/login", authLimiter);
-app.use("/user/signup", authLimiter);
 
 // --------------------------
 // Astro Predictions API
@@ -82,7 +74,7 @@ app.get("/url/:shortId", async (req, res) => {
 
     const entry = await URL.findOneAndUpdate(
       { shortId },
-      { $push: { visitHistory: { timestamp: new Date() } } }, // use Date object instead of Date.now()
+      { $push: { visitHistory: { timestamp: new Date() } } },
       { new: true }
     );
 
