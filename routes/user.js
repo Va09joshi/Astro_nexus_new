@@ -1,17 +1,19 @@
-const express = require("express");
-const { handleUserSignup, handleUserLogin, handleUserLogout } = require("../controllers/user");
-const { authenticateToken } = require("../middlewares/auth");
+import express from "express";
+import { handleUserSignup, handleUserLogin, handleUserLogout } from "../controllers/user.js";
+import { authenticateToken } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-// Temporary test route
+// Test route
 router.get("/test", (req, res) => {
   res.json({ message: "User route is working!" });
 });
 
-// Main Auth routes
+// Authentication routes
 router.post("/signup", handleUserSignup);
 router.post("/login", handleUserLogin);
 router.post("/logout", authenticateToken, handleUserLogout);
 
-module.exports = router;
+console.log("User routes loaded");
+
+export default router;

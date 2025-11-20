@@ -20,6 +20,8 @@ import staticRoute from "./routes/staticRouter.js";
 import userRoute from "./routes/user.js";
 
 const app = express();
+app.set("trust proxy", 1);   // <--- REQUIRED on Render
+
 const PORT = process.env.PORT || 8001;
 
 // Fix __dirname in ESM
@@ -62,7 +64,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: 50,
   message: { error: "Too many login attempts, please try again later." },
 });
 
