@@ -6,7 +6,6 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
-import rateLimit from "express-rate-limit";
 import { fileURLToPath } from "url";
 
 import { connectToMongoDB } from "./connect.js";
@@ -57,7 +56,7 @@ app.use(cookieParser());
 // Rate Limiters
 // --------------------------
 
-app.use("/api", generalLimiter);
+// app.use("/api", generalLimiter);
 app.use("/user/login", authLimiter);
 app.use("/user/signup", authLimiter);
 
