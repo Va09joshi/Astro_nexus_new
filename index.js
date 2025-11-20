@@ -120,7 +120,8 @@ app.use((err, req, res, next) => {
 // --------------------------
 // Start Server
 // --------------------------
-app.listen(PORT, () => {
-  console.log(`✓ Server started at http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✓ Server started on port ${PORT}`);
   console.log(`✓ Environment: ${process.env.NODE_ENV || "development"}`);
 });
+
