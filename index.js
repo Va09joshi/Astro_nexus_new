@@ -17,111 +17,85 @@ import birthChartRoute from "./routes/birthchart.js";
 import urlRoute from "./routes/url.js";
 import staticRoute from "./routes/staticRouter.js";
 import userRoute from "./routes/user.js";
+import compatibilityRoute from "./routes/compatablity.js"; // <-- Import here
 
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", 1); // needed for Render/Vercel
 
 const PORT = process.env.PORT || 8001;
 
-// Fix __dirname in ESM
+// get __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --------------------------
-// MongoDB Connection
-// --------------------------
+// connect DB
 connectToMongoDB(process.env.MONGODB_URI)
-  .then(() => console.log("✓ MongoDB connected"))
+  .then(() => console.log("MongoDB connected"))
   .catch((err) => {
-    console.error("✗ MongoDB connection error:", err);
+    console.log("MongoDB error:", err);
     process.exit(1);
   });
 
-// --------------------------
-// View Engine
-// --------------------------
+// ejs setup
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// --------------------------
-// Middleware
-// --------------------------
+// middlewares
 app.use(cors({ origin: true, credentials: true }));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// --------------------------
-// Astro Predictions API
-// --------------------------
+// api routes
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute);
+app.use("/api/v1/compatibility", compatibilityRoute);
 
-// --------------------------
-// Health Route
-// --------------------------
+// health check
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", time: new Date() });
 });
 
-// --------------------------
-// Short URL Redirect
-// --------------------------
+// short url redirect
 app.get("/url/:shortId", async (req, res) => {
   try {
-    const { shortId } = req.params;
-
     const entry = await URL.findOneAndUpdate(
-      { shortId },
+      { shortId: req.params.shortId },
       { $push: { visitHistory: { timestamp: new Date() } } },
       { new: true }
     );
 
-    if (!entry) {
-      return res.status(404).json({ error: "Short URL not found" });
-    }
+    if (!entry) return res.status(404).json({ error: "Not found" });
 
     return res.redirect(entry.redirectURL);
-  } catch (error) {
-    console.error("Redirect error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (err) {
+    console.log("Redirect error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// --------------------------
-// API Routes
-// --------------------------
+// protected URL API
 app.use("/api/url", authenticateToken, urlRoute);
+
+// user auth routes
 app.use("/user", userRoute);
 
-// --------------------------
-// Web Routes
-// --------------------------
+// static pages
 app.use("/", optionalAuth, staticRoute);
 
-// --------------------------
-// 404 Handler
-// --------------------------
+// not found
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// --------------------------
-// Global Error Handler
-// --------------------------
+// error handler
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(err.status || 500).json({
-    error: err.message || "Internal server error",
-  });
+  console.log("Error:", err);
+  res.status(500).json({ error: err.message || "Server error" });
 });
 
-// --------------------------
-// Start Server
-// --------------------------
+// start server
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✓ Server started on port ${PORT}`);
-  console.log(`✓ Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`Server running on ${PORT}`);
 });
-
