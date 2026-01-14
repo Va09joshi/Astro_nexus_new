@@ -1,19 +1,29 @@
-const User = require("../../models/user");
+import User from "../../models/user.js";
 
-exports.getAllUsers = async (req, res) => {
-  const users = await User.find().select("-password");
-  res.json(users);
+// GET /admin/users
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
-exports.toggleUserBlock = async (req, res) => {
-  const user = await User.findById(req.params.id);
+// PATCH /admin/users/:id/block
+export const toggleUserBlock = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
 
-  if (!user || user.role === "admin") {
-    return res.status(403).json({ message: "Action not allowed" });
+    if (!user || user.role === "admin") {
+      return res.status(403).json({ message: "Action not allowed" });
+    }
+
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    res.json({ success: true, isBlocked: user.isBlocked });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  user.isBlocked = !user.isBlocked;
-  await user.save();
-
-  res.json({ success: true, isBlocked: user.isBlocked });
 };
