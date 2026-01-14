@@ -1,6 +1,10 @@
-const jwt = require("jsonwebtoken");
+// backend/service/auth.js
+import jwt from "jsonwebtoken";
 
-function createToken(user) {
+/**
+ * Create a JWT token for a user
+ */
+export function createToken(user) {
   const payload = {
     _id: user._id,
     email: user.email,
@@ -11,15 +15,13 @@ function createToken(user) {
   });
 }
 
-function verifyToken(token) {
+/**
+ * Verify a JWT token
+ */
+export function verifyToken(token) {
   try {
     return jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
     return null;
   }
 }
-
-module.exports = {
-  createToken,
-  verifyToken,
-};

@@ -1,9 +1,13 @@
-const bcrypt = require("bcryptjs");
-const validator = require("validator");
-const User = require("../models/user");
-const { createToken } = require("../service/auth");
+// controllers/users/user.js
+import bcrypt from "bcryptjs";
+import validator from "validator";
+import User from "../../models/user.js";
+import { createToken } from "../../service/auth.js";
 
-async function handleUserSignup(req, res) {
+/**
+ * User signup
+ */
+export async function handleUserSignup(req, res) {
   try {
     const { name, email, phone, password, confirmPassword } = req.body;
 
@@ -16,7 +20,6 @@ async function handleUserSignup(req, res) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // Validate phone number
     if (!validator.isMobilePhone(phone, "any")) {
       return res.status(400).json({ error: "Invalid phone number format" });
     }
@@ -29,7 +32,7 @@ async function handleUserSignup(req, res) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
-    // Check if user already exists
+    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already registered" });
@@ -38,11 +41,11 @@ async function handleUserSignup(req, res) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Create user (added phone field here)
+    // Create user
     const user = await User.create({
       name,
       email,
-      phone, // <-- this was missing earlier
+      phone,
       password: hashedPassword,
     });
 
@@ -72,7 +75,10 @@ async function handleUserSignup(req, res) {
   }
 }
 
-async function handleUserLogin(req, res) {
+/**
+ * User login
+ */
+export async function handleUserLogin(req, res) {
   try {
     const { email, password } = req.body;
 
@@ -84,25 +90,21 @@ async function handleUserLogin(req, res) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Generate token
     const token = createToken(user);
 
-    // Set cookie
     res.cookie("token", token, {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return res.json({
@@ -122,13 +124,10 @@ async function handleUserLogin(req, res) {
   }
 }
 
-async function handleUserLogout(req, res) {
+/**
+ * User logout
+ */
+export async function handleUserLogout(req, res) {
   res.clearCookie("token");
   return res.json({ success: true, message: "Logged out successfully" });
 }
-
-module.exports = {
-  handleUserSignup,
-  handleUserLogin,
-  handleUserLogout,
-};

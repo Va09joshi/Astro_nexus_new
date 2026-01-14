@@ -1,5 +1,5 @@
 import express from "express";
-import { getBirthChart } from "../controllers/birthChartController.js";
+import { getBirthChart } from "../controllers/services/birthChartController.js";
 
 const router = express.Router();
 

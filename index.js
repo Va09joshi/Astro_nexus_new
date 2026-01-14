@@ -12,52 +12,78 @@ import { connectToMongoDB } from "./connect.js";
 import { authenticateToken, optionalAuth } from "./middlewares/auth.js";
 import URL from "./models/url.js";
 
+
+// ================= EXISTING ROUTES =================
 import predictionsRoute from "./routes/predictions.js";
 import birthChartRoute from "./routes/birthchart.js";
 import urlRoute from "./routes/url.js";
 import staticRoute from "./routes/staticRouter.js";
 import userRoute from "./routes/user.js";
-import compatibilityRoute from "./routes/compatablity.js"; // <-- Import here
+import compatibilityRoute from "./routes/compatablity.js";
+import horoscopeRoute from "./routes/horoscopeRoute.js";
+
+// ================= ADMIN ROUTES (ESM IMPORTS) =================
+import adminAuthRoutes from "./routes/admin/admin.auth.routes.js";
+import adminProductRoutes from "./routes/admin/admin.product.routes.js"
+import adminOrderRoutes from "./routes/admin/admin.order.routes.js";
+import adminCMSRoutes from "./routes/admin/admin.cms.routes.js";
+import adminDashboardRoutes from "./routes/admin/admin.dashboard.routes.js";
+
+// =============================================================
 
 const app = express();
-app.set("trust proxy", 1); // needed for Render/Vercel
+app.set("trust proxy", 1);
 
 const PORT = process.env.PORT || 8001;
 
-// get __dirname in ESM
+// ESM dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// connect DB
+// ================= DATABASE =================
 connectToMongoDB(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => {
-    console.log("MongoDB error:", err);
+    console.error("MongoDB connection error:", err);
     process.exit(1);
   });
 
-// ejs setup
+// ================= VIEW ENGINE =================
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// middlewares
+// ================= GLOBAL MIDDLEWARES =================
 app.use(cors({ origin: true, credentials: true }));
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// api routes
+// ================= API ROUTES =================
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute);
 app.use("/api/v1/compatibility", compatibilityRoute);
+app.use("/api/horoscope", horoscopeRoute);
 
-// health check
+// ================= ADMIN CMS & E-COMMERCE =================
+
+app.use("/api/admin/auth", adminAuthRoutes);
+app.use("/api/admin/products", adminProductRoutes.default || adminProductRoutes);
+
+app.use("/api/admin/orders", adminOrderRoutes);
+app.use("/api/admin/cms", adminCMSRoutes);
+app.use("/api/admin/dashboard", adminDashboardRoutes);
+
+// ================= HEALTH CHECK =================
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", time: new Date() });
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    time: new Date()
+  });
 });
 
-// short url redirect
+// ================= SHORT URL REDIRECT =================
 app.get("/url/:shortId", async (req, res) => {
   try {
     const entry = await URL.findOneAndUpdate(
@@ -66,36 +92,40 @@ app.get("/url/:shortId", async (req, res) => {
       { new: true }
     );
 
-    if (!entry) return res.status(404).json({ error: "Not found" });
+    if (!entry) {
+      return res.status(404).json({ error: "URL not found" });
+    }
 
     return res.redirect(entry.redirectURL);
   } catch (err) {
-    console.log("Redirect error:", err);
+    console.error("Redirect error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// protected URL API
+// ================= PROTECTED URL API =================
 app.use("/api/url", authenticateToken, urlRoute);
 
-// user auth routes
+// ================= USER AUTH =================
 app.use("/user", userRoute);
 
-// static pages
+// ================= STATIC & PAGES =================
 app.use("/", optionalAuth, staticRoute);
 
-// not found
+// ================= 404 HANDLER =================
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// error handler
+// ================= GLOBAL ERROR HANDLER =================
 app.use((err, req, res, next) => {
-  console.log("Error:", err);
-  res.status(500).json({ error: err.message || "Server error" });
+  console.error("Unhandled error:", err);
+  res.status(500).json({
+    error: err.message || "Internal Server Error"
+  });
 });
 
-// start server
+// ================= START SERVER =================
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

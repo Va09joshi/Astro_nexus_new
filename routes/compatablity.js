@@ -3,7 +3,7 @@ const router = express.Router();
 
 const {
   ashtakootScore,
-} = require("../controllers/compatabiltycontroller");
+} = require("../controllers/services/compatabiltycontroller");
 
 // POST /api/v1/compatibility/match-making/ashtakoot-score
 router.post(
