@@ -12,7 +12,6 @@ import { connectToMongoDB } from "./connect.js";
 import { authenticateToken, optionalAuth } from "./middlewares/auth.js";
 import URL from "./models/url.js";
 
-
 // ================= EXISTING ROUTES =================
 import predictionsRoute from "./routes/predictions.js";
 import birthChartRoute from "./routes/birthchart.js";
@@ -22,24 +21,23 @@ import userRoute from "./routes/user.js";
 import compatibilityRoute from "./routes/compatablity.js";
 import horoscopeRoute from "./routes/horoscopeRoute.js";
 
-// ================= ADMIN ROUTES (ESM IMPORTS) =================
+// ================= ADMIN ROUTES =================
 import adminAuthRoutes from "./routes/admin/admin.auth.routes.js";
-import adminProductRoutes from "./routes/admin/admin.product.routes.js"
+import adminProductRoutes from "./routes/admin/admin.product.routes.js";
 import adminOrderRoutes from "./routes/admin/admin.order.routes.js";
 import adminCMSRoutes from "./routes/admin/admin.cms.routes.js";
 import adminDashboardRoutes from "./routes/admin/admin.dashboard.routes.js";
 import adminCategoryRoutes from "./routes/admin/categories.js";
+import adminUserRoutes from "./routes/admin/admin.user.routes.js";
 
-
-
-// =============================================================
+// ==================================================
 
 const app = express();
 app.set("trust proxy", 1);
 
 const PORT = process.env.PORT || 8001;
 
-// ESM dirname
+// ================= ESM DIRNAME =================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -55,31 +53,27 @@ connectToMongoDB(process.env.MONGODB_URI)
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// ================= GLOBAL MIDDLEWARES =================
+// ================= GLOBAL MIDDLEWARE =================
 app.use(cors({ origin: true, credentials: true }));
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ================= API ROUTES =================
+// ================= PUBLIC APIs =================
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute);
 app.use("/api/v1/compatibility", compatibilityRoute);
 app.use("/api/horoscope", horoscopeRoute);
 
-// ================= ADMIN CMS & E-COMMERCE =================
-
+// ================= ADMIN APIs =================
 app.use("/api/admin/auth", adminAuthRoutes);
-app.use("/api/admin/products", adminProductRoutes.default || adminProductRoutes);
-app.use("/api/admin", adminAuthRoutes);
-
-
+app.use("/api/admin/products", adminProductRoutes);
+app.use("/api/admin/users", adminUserRoutes); // ✅ FIXED
 app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/cms", adminCMSRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/categories", adminCategoryRoutes);
-
 
 // ================= HEALTH CHECK =================
 app.get("/health", (req, res) => {
@@ -116,7 +110,7 @@ app.use("/api/url", authenticateToken, urlRoute);
 // ================= USER AUTH =================
 app.use("/user", userRoute);
 
-// ================= STATIC & PAGES =================
+// ================= STATIC PAGES =================
 app.use("/", optionalAuth, staticRoute);
 
 // ================= 404 HANDLER =================
