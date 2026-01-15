@@ -1,16 +1,8 @@
-const router = require("express").Router();
+import express from "express";
+import { login } from "../../controllers/admin/admin.auth.controller.js";
 
-// Auth controller
-const authController = require("../../controllers/admin/admin.auth.controller");
+const router = express.Router();
 
-// User management controller
-const userController = require("../../controllers/admin/admin.user.controller"); // create this
+router.post("/login", login);
 
-// Auth route
-router.post("/login", authController.login);
-
-// User management routes
-router.get("/users", userController.getAllUsers);               // GET /admin/users
-router.patch("/users/:id/block", userController.toggleUserBlock);     // PATCH /admin/users/:id/block
-
-module.exports = router;
+export default router;
