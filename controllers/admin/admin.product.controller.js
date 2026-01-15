@@ -1,15 +1,17 @@
 const Product = require("../../models/shop/Product.model");
 const Category = require("../../models/shop/Category.model");
 
-// CREATE PRODUCT
+// ================= CREATE PRODUCT =================
 exports.create = async (req, res) => {
   try {
     const { name, price, category } = req.body;
 
-    if (!name || !price) {
+    // Required fields
+    if (!name || price === undefined) {
       return res.status(400).json({ message: "Name and price are required" });
     }
 
+    // Validate category if provided
     if (category) {
       const categoryExists = await Category.findById(category);
       if (!categoryExists || !categoryExists.isActive) {
@@ -25,11 +27,11 @@ exports.create = async (req, res) => {
   }
 };
 
-// GET ALL PRODUCTS (ADMIN VIEW)
+// ================= GET ALL PRODUCTS =================
 exports.getAll = async (req, res) => {
   try {
     const products = await Product.find()
-      .populate("category", "name isActive")
+      .populate("category", "name isActive") // populate only if category exists
       .sort({ createdAt: -1 });
 
     res.json(products);
@@ -39,7 +41,7 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// UPDATE PRODUCT
+// ================= UPDATE PRODUCT =================
 exports.update = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -48,6 +50,7 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    // Validate category if provided
     if (req.body.category) {
       const categoryExists = await Category.findById(req.body.category);
       if (!categoryExists || !categoryExists.isActive) {
@@ -65,7 +68,7 @@ exports.update = async (req, res) => {
   }
 };
 
-// SOFT DELETE (Deactivate)
+// ================= SOFT DELETE (Deactivate) =================
 exports.remove = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);

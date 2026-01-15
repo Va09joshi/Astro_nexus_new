@@ -19,7 +19,7 @@ import urlRoute from "./routes/url.js";
 import staticRoute from "./routes/staticRouter.js";
 import userRoute from "./routes/user.js";
 import compatibilityRoute from "./routes/compatablity.js";
-import horoscopeRoute from "./routes/horoscopeRoute.js";
+import horoscopeRoute from "./routes/Astrology_service/horoscope.js";
 
 // ================= ADMIN ROUTES =================
 import adminAuthRoutes from "./routes/admin/admin.auth.routes.js";
@@ -65,6 +65,7 @@ app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute);
 app.use("/api/v1/compatibility", compatibilityRoute);
 app.use("/api/horoscope", horoscopeRoute);
+
 
 // ================= ADMIN APIs =================
 app.use("/api/admin/auth", adminAuthRoutes);
