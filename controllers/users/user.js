@@ -3,16 +3,37 @@ import bcrypt from "bcryptjs";
 import validator from "validator";
 import User from "../../models/user.js";
 import { createToken } from "../../service/auth.js";
+import { getCoordinatesFromPlace } from "../../service/geocode.js";
 
 /**
  * User signup
  */
 export async function handleUserSignup(req, res) {
   try {
-    const { name, email, phone, password, confirmPassword } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      password,
+      confirmPassword,
+      dateOfBirth,
+      timeOfBirth,
+      placeOfBirth,
+      timezone
+    } = req.body;
 
-    // Validation
-    if (!name || !email || !phone || !password || !confirmPassword) {
+    // 1️⃣ Validation
+    if (
+      !name ||
+      !email ||
+      !phone ||
+      !password ||
+      !confirmPassword ||
+      !dateOfBirth ||
+      !timeOfBirth ||
+      !placeOfBirth ||
+      timezone === undefined
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -21,7 +42,7 @@ export async function handleUserSignup(req, res) {
     }
 
     if (!validator.isMobilePhone(phone, "any")) {
-      return res.status(400).json({ error: "Invalid phone number format" });
+      return res.status(400).json({ error: "Invalid phone number" });
     }
 
     if (password.length < 6) {
@@ -39,15 +60,29 @@ export async function handleUserSignup(req, res) {
       return res.status(400).json({ error: "Email already registered" });
     }
 
+    // 2️⃣ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 3️⃣ Convert place → lat/long
+    const { latitude, longitude } = await getCoordinatesFromPlace(placeOfBirth);
+
+    // 4️⃣ Create user
     const user = await User.create({
       name,
       email,
       phone,
-      password: hashedPassword
+      password: hashedPassword,
+      birthDetails: {
+        date: new Date(dateOfBirth),
+        time: timeOfBirth,
+        place: placeOfBirth,
+        latitude,
+        longitude,
+        timezone
+      }
     });
 
+    // 5️⃣ Create token
     const token = createToken(user);
 
     res.cookie("token", token, {
@@ -63,12 +98,13 @@ export async function handleUserSignup(req, res) {
         id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        birthDetails: user.birthDetails
       }
     });
   } catch (error) {
     console.error("Signup error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 }
 
@@ -89,7 +125,6 @@ export async function handleUserLogin(req, res) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // 🔴 IMPORTANT FIX
     const user = await User.findOne({ email }).select("+password");
 
     if (!user || !user.password) {
@@ -104,6 +139,10 @@ export async function handleUserLogin(req, res) {
         error: "Invalid email or password"
       });
     }
+
+    // Update last login
+    user.lastLoginAt = new Date();
+    await user.save();
 
     const token = createToken(user);
 
@@ -120,7 +159,8 @@ export async function handleUserLogin(req, res) {
         id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        birthDetails: user.birthDetails
       }
     });
   } catch (error) {
