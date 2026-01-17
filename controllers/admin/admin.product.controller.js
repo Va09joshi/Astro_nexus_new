@@ -6,12 +6,11 @@ exports.create = async (req, res) => {
   try {
     const { name, price, category } = req.body;
 
-    // Required fields
     if (!name || price === undefined) {
       return res.status(400).json({ message: "Name and price are required" });
     }
 
-    // Validate category if provided
+    // Validate category only if provided and not null
     if (category) {
       const categoryExists = await Category.findById(category);
       if (!categoryExists || !categoryExists.isActive) {
@@ -19,13 +18,19 @@ exports.create = async (req, res) => {
       }
     }
 
-    const product = await Product.create(req.body);
+    // If category is null, just skip it
+    const product = await Product.create({
+      ...req.body,
+      category: category || undefined, // MongoDB will ignore undefined
+    });
+
     res.status(201).json(product);
 
   } catch (err) {
     res.status(500).json({ message: "Product creation failed", error: err.message });
   }
 };
+
 
 // ================= GET ALL PRODUCTS =================
 exports.getAll = async (req, res) => {

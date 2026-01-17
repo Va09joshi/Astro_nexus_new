@@ -25,37 +25,34 @@ export async function handleUserSignup(req, res) {
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters long" });
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long"
+      });
     }
 
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already registered" });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = await User.create({
       name,
       email,
       phone,
-      password: hashedPassword,
+      password: hashedPassword
     });
 
-    // Generate JWT
     const token = createToken(user);
 
-    // Set cookie
     res.cookie("token", token, {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     return res.status(201).json({
@@ -66,8 +63,8 @@ export async function handleUserSignup(req, res) {
         id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
-      },
+        phone: user.phone
+      }
     });
   } catch (error) {
     console.error("Signup error:", error);
@@ -83,28 +80,36 @@ export async function handleUserLogin(req, res) {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
+      return res.status(400).json({
+        error: "Email and password are required"
+      });
     }
 
     if (!validator.isEmail(email)) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: "Invalid email or password" });
+    // 🔴 IMPORTANT FIX
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!user || !user.password) {
+      return res.status(401).json({
+        error: "Invalid email or password"
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      return res.status(401).json({
+        error: "Invalid email or password"
+      });
     }
 
     const token = createToken(user);
 
     res.cookie("token", token, {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     return res.json({
@@ -115,8 +120,8 @@ export async function handleUserLogin(req, res) {
         id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
-      },
+        phone: user.phone
+      }
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -129,5 +134,8 @@ export async function handleUserLogin(req, res) {
  */
 export async function handleUserLogout(req, res) {
   res.clearCookie("token");
-  return res.json({ success: true, message: "Logged out successfully" });
+  return res.json({
+    success: true,
+    message: "Logged out successfully"
+  });
 }
