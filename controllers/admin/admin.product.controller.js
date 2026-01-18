@@ -96,3 +96,16 @@ exports.remove = async (req, res) => {
     res.status(500).json({ message: "Delete failed" });
   }
 };
+
+exports.hardDelete = async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    res.json({ message: "Product deleted permanently" });
+  } catch (err) {
+    console.error("DELETE PRODUCT ERROR:", err);
+    res.status(500).json({ message: "Delete failed" });
+  }
+};
+
