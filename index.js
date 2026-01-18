@@ -109,7 +109,7 @@ app.get("/url/:shortId", async (req, res) => {
 app.use("/api/url", authenticateToken, urlRoute);
 
 // ================= USER AUTH =================
-app.use("/api/user", userRoute);
+app.use("/user", userRoute);
 
 // ================= STATIC PAGES =================
 app.use("/", optionalAuth, staticRoute);

@@ -6,30 +6,56 @@ exports.create = async (req, res) => {
   try {
     const { name, price, category } = req.body;
 
-    if (!name || price === undefined) {
-      return res.status(400).json({ message: "Name and price are required" });
+    // ================= BASIC VALIDATION =================
+    if (!name || price === undefined || price === null) {
+      return res.status(400).json({
+        message: "Name and price are required",
+      });
     }
 
-    // Validate category only if provided and not null
+    // Ensure price is a valid positive number
+    if (typeof price !== "number" || price <= 0) {
+      return res.status(400).json({
+        message: "Price must be a valid number greater than 0",
+      });
+    }
+
+    // ================= CATEGORY VALIDATION =================
+    // Validate only if category is NOT null / empty
     if (category) {
       const categoryExists = await Category.findById(category);
-      if (!categoryExists || !categoryExists.isActive) {
-        return res.status(400).json({ message: "Invalid or inactive category" });
+
+      if (!categoryExists) {
+        return res.status(400).json({
+          message: "Category does not exist",
+        });
+      }
+
+      if (!categoryExists.isActive) {
+        return res.status(400).json({
+          message: "Category is inactive",
+        });
       }
     }
 
-    // If category is null, just skip it
+    // ================= CREATE PRODUCT =================
     const product = await Product.create({
       ...req.body,
-      category: category || undefined, // MongoDB will ignore undefined
+      category: category || undefined, // MongoDB ignores undefined
     });
 
-    res.status(201).json(product);
+    return res.status(201).json(product);
 
   } catch (err) {
-    res.status(500).json({ message: "Product creation failed", error: err.message });
+    console.error("CREATE PRODUCT ERROR:", err);
+
+    return res.status(500).json({
+      message: "Product creation failed",
+      error: err.message,
+    });
   }
 };
+
 
 
 // ================= GET ALL PRODUCTS =================
