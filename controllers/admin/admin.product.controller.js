@@ -1,10 +1,10 @@
-const Product = require("../../models/shop/Product.model");
-const Category = require("../../models/shop/Category.model");
+import Product from "../../models/shop/Product.model.js";
+import Category from "../../models/shop/Category.model.js";
 
 /**
  * ================= CREATE PRODUCT =================
  */
-exports.createProduct = async (req, res) => {
+export const createProduct = async (req, res) => {
   try {
     const {
       name,
@@ -14,13 +14,14 @@ exports.createProduct = async (req, res) => {
       stock,
       description,
       images,
-      isActive
+      isActive,
+      deliveryType
     } = req.body;
 
     // ✅ REQUIRED VALIDATION
-    if (!name || price === undefined || !astrologyType) {
+    if (!name || price === undefined) {
       return res.status(400).json({
-        message: "Name, price and astrologyType are required"
+        message: "Name and price are required"
       });
     }
 
@@ -30,7 +31,7 @@ exports.createProduct = async (req, res) => {
       });
     }
 
-    // ✅ CATEGORY VALIDATION (SAFE)
+    // ✅ CATEGORY VALIDATION
     let categoryId = null;
     if (category) {
       const cat = await Category.findOne({
@@ -47,15 +48,16 @@ exports.createProduct = async (req, res) => {
       categoryId = cat._id;
     }
 
-    // ✅ CREATE PRODUCT (NO req.body SPREAD)
+    // ✅ CREATE PRODUCT
     const product = await Product.create({
       name,
       description,
-      price,
+      price: Number(price),
       stock: stock ?? 0,
       category: categoryId,
-      astrologyType,
+      astrologyType: astrologyType || "gemstone",
       images: Array.isArray(images) ? images : [],
+      deliveryType: deliveryType || "physical",
       isActive: isActive ?? true
     });
 
@@ -67,7 +69,6 @@ exports.createProduct = async (req, res) => {
 
   } catch (err) {
     console.error("CREATE PRODUCT ERROR:", err);
-
     return res.status(500).json({
       success: false,
       error: err.message
@@ -75,19 +76,16 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-
 /**
  * ================= GET ALL PRODUCTS (ADMIN) =================
  */
-exports.getAllProducts = async (req, res) => {
+export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({
-      isDeleted: { $ne: true } // ✅ prevent soft-deleted crash
-    })
+    const products = await Product.find({ isDeleted: { $ne: true } })
       .populate({
         path: "category",
         select: "name isActive",
-        options: { strictPopulate: false } // ✅ CRITICAL FIX
+        options: { strictPopulate: false }
       })
       .sort({ createdAt: -1 });
 
@@ -100,6 +98,7 @@ exports.getAllProducts = async (req, res) => {
   } catch (err) {
     console.error("GET PRODUCTS ERROR:", err);
     res.status(500).json({
+      success: false,
       message: err.message || "Failed to fetch products"
     });
   }
@@ -108,7 +107,7 @@ exports.getAllProducts = async (req, res) => {
 /**
  * ================= GET SINGLE PRODUCT =================
  */
-exports.getProductById = async (req, res) => {
+export const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate({
@@ -121,17 +120,20 @@ exports.getProductById = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    res.json(product);
+    res.json({
+      success: true,
+      product
+    });
   } catch (err) {
     console.error("GET PRODUCT ERROR:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 /**
  * ================= UPDATE PRODUCT =================
  */
-exports.updateProduct = async (req, res) => {
+export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
 
@@ -156,20 +158,21 @@ exports.updateProduct = async (req, res) => {
     await product.save();
 
     res.json({
+      success: true,
       message: "Product updated successfully",
       product
     });
 
   } catch (err) {
     console.error("UPDATE PRODUCT ERROR:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 /**
- * ================= SOFT DELETE =================
+ * ================= SOFT DELETE (DEACTIVATE) =================
  */
-exports.deactivateProduct = async (req, res) => {
+export const deactivateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
 
@@ -181,17 +184,17 @@ exports.deactivateProduct = async (req, res) => {
     product.isDeleted = true;
     await product.save();
 
-    res.json({ message: "Product deactivated successfully" });
+    res.json({ success: true, message: "Product deactivated successfully" });
   } catch (err) {
     console.error("DEACTIVATE PRODUCT ERROR:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 /**
  * ================= PERMANENT DELETE =================
  */
-exports.deleteProductPermanent = async (req, res) => {
+export const deleteProductPermanent = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
 
@@ -199,9 +202,9 @@ exports.deleteProductPermanent = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    res.json({ message: "Product permanently deleted" });
+    res.json({ success: true, message: "Product permanently deleted" });
   } catch (err) {
     console.error("DELETE PRODUCT ERROR:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
