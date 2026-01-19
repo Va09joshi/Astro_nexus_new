@@ -22,12 +22,20 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ message: "Price must be greater than 0" });
     }
 
-    let categoryId;
+    let categoryId = null;
+
     if (category) {
-      const cat = await Category.findOne({ _id: category, isActive: true });
+      const cat = await Category.findOne({
+        _id: category,
+        isActive: true
+      });
+
       if (!cat) {
-        return res.status(400).json({ message: "Invalid or inactive category" });
+        return res.status(400).json({
+          message: "Invalid or inactive category"
+        });
       }
+
       categoryId = cat._id;
     }
 
@@ -45,7 +53,7 @@ exports.createProduct = async (req, res) => {
 
   } catch (err) {
     console.error("CREATE PRODUCT ERROR:", err);
-    res.status(500).json({ message: "Product creation failed" });
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -54,13 +62,27 @@ exports.createProduct = async (req, res) => {
  */
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find()
-      .populate("category", "name isActive")
+    const products = await Product.find({
+      isDeleted: { $ne: true } // ✅ prevent soft-deleted crash
+    })
+      .populate({
+        path: "category",
+        select: "name isActive",
+        options: { strictPopulate: false } // ✅ CRITICAL FIX
+      })
       .sort({ createdAt: -1 });
 
-    res.json(products);
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch products" });
+    console.error("GET PRODUCTS ERROR:", err);
+    res.status(500).json({
+      message: err.message || "Failed to fetch products"
+    });
   }
 };
 
@@ -70,7 +92,11 @@ exports.getAllProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate("category", "name isActive");
+      .populate({
+        path: "category",
+        select: "name isActive",
+        options: { strictPopulate: false }
+      });
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -78,7 +104,8 @@ exports.getProductById = async (req, res) => {
 
     res.json(product);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch product" });
+    console.error("GET PRODUCT ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -88,6 +115,7 @@ exports.getProductById = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
+
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
@@ -101,6 +129,7 @@ exports.updateProduct = async (req, res) => {
       if (!cat) {
         return res.status(400).json({ message: "Invalid category" });
       }
+
       req.body.category = cat._id;
     }
 
@@ -113,12 +142,13 @@ exports.updateProduct = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ message: "Product update failed" });
+    console.error("UPDATE PRODUCT ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
- * ================= SOFT DELETE (DEACTIVATE) =================
+ * ================= SOFT DELETE =================
  */
 exports.deactivateProduct = async (req, res) => {
   try {
@@ -134,7 +164,8 @@ exports.deactivateProduct = async (req, res) => {
 
     res.json({ message: "Product deactivated successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Deactivation failed" });
+    console.error("DEACTIVATE PRODUCT ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -151,6 +182,7 @@ exports.deleteProductPermanent = async (req, res) => {
 
     res.json({ message: "Product permanently deleted" });
   } catch (err) {
-    res.status(500).json({ message: "Permanent delete failed" });
+    console.error("DELETE PRODUCT ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
