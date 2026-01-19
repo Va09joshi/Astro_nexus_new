@@ -1,75 +1,71 @@
-const Category = require("../../models/shop/Category.model");
+// controllers/admin/category.controller.js
+import Category from "../../models/shop/Category.model.js";
 
 /**
+ * CREATE CATEGORY
  * POST /api/admin/categories
  */
-exports.create = async (req, res) => {
+export const createCategory = async (req, res) => {
   try {
     const { name } = req.body;
-    if (!name) {
-      return res.status(400).json({ message: "Category name is required" });
-    }
+    if (!name) return res.status(400).json({ message: "Category name is required" });
 
     const exists = await Category.findOne({ name });
-    if (exists) {
-      return res.status(409).json({ message: "Category already exists" });
-    }
+    if (exists) return res.status(409).json({ message: "Category already exists" });
 
     const category = await Category.create({ name });
     res.status(201).json(category);
   } catch (err) {
+    console.error("CREATE CATEGORY ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
 /**
+ * GET ALL CATEGORIES
  * GET /api/admin/categories
  */
-exports.getAll = async (req, res) => {
+export const getAllCategories = async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
     res.json(categories);
   } catch (err) {
+    console.error("GET CATEGORIES ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
 /**
+ * UPDATE CATEGORY
  * PUT /api/admin/categories/:id
  */
-exports.update = async (req, res) => {
+export const updateCategory = async (req, res) => {
   try {
-    const updated = await Category.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-
-    if (!updated) {
-      return res.status(404).json({ message: "Category not found" });
-    }
+    const updated = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ message: "Category not found" });
 
     res.json(updated);
   } catch (err) {
+    console.error("UPDATE CATEGORY ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
 /**
+ * TOGGLE CATEGORY STATUS
  * PATCH /api/admin/categories/:id/toggle
  */
-exports.toggleStatus = async (req, res) => {
+export const toggleCategoryStatus = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
-    if (!category) {
-      return res.status(404).json({ message: "Category not found" });
-    }
+    if (!category) return res.status(404).json({ message: "Category not found" });
 
     category.isActive = !category.isActive;
     await category.save();
 
     res.json(category);
   } catch (err) {
+    console.error("TOGGLE CATEGORY STATUS ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };

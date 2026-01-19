@@ -1,15 +1,16 @@
-const router = require("express").Router();
-const controller = require("../../controllers/admin/admin.category.controller");
-const { authenticateToken } = require("../../middlewares/auth");
-const adminOnly = require("../../middlewares/admin.middleware");
+import express from "express";
+import {
+  createCategory,
+  getAllCategories,
+  updateCategory,
+  toggleCategoryStatus
+} from "../../controllers/admin/admin.category.controller.js";
 
-// Apply middlewares to all routes
-router.use(authenticateToken, adminOnly);
+const router = express.Router();
 
-// Routes
-router.post("/", controller.create);
-router.get("/", controller.getAll);
-router.put("/:id", controller.update);
-router.patch("/:id/toggle", controller.toggleStatus);
+router.post("/", createCategory);
+router.get("/", getAllCategories);
+router.put("/:id", updateCategory);
+router.patch("/:id/toggle", toggleCategoryStatus);
 
-module.exports = router;
+export default router;
