@@ -11,19 +11,27 @@ exports.createProduct = async (req, res) => {
       price,
       category,
       astrologyType,
-      stock
+      stock,
+      description,
+      images,
+      isActive
     } = req.body;
 
-    if (!name || price === undefined) {
-      return res.status(400).json({ message: "Name and price are required" });
+    // ✅ REQUIRED VALIDATION
+    if (!name || price === undefined || !astrologyType) {
+      return res.status(400).json({
+        message: "Name, price and astrologyType are required"
+      });
     }
 
-    if (price <= 0) {
-      return res.status(400).json({ message: "Price must be greater than 0" });
+    if (Number(price) <= 0) {
+      return res.status(400).json({
+        message: "Price must be greater than 0"
+      });
     }
 
+    // ✅ CATEGORY VALIDATION (SAFE)
     let categoryId = null;
-
     if (category) {
       const cat = await Category.findOne({
         _id: category,
@@ -39,23 +47,34 @@ exports.createProduct = async (req, res) => {
       categoryId = cat._id;
     }
 
+    // ✅ CREATE PRODUCT (NO req.body SPREAD)
     const product = await Product.create({
-      ...req.body,
-      category: categoryId,
+      name,
+      description,
+      price,
       stock: stock ?? 0,
-      astrologyType
+      category: categoryId,
+      astrologyType,
+      images: Array.isArray(images) ? images : [],
+      isActive: isActive ?? true
     });
 
-    res.status(201).json({
+    return res.status(201).json({
+      success: true,
       message: "Product created successfully",
       product
     });
 
   } catch (err) {
     console.error("CREATE PRODUCT ERROR:", err);
-    res.status(500).json({ message: err.message });
+
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 };
+
 
 /**
  * ================= GET ALL PRODUCTS (ADMIN) =================
