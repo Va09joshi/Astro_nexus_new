@@ -1,17 +1,19 @@
 const router = require("express").Router();
-const c = require("../../controllers/admin/admin.product.controller");
-const auth = require("../../middlewares/auth.js");  // Note the .js extension
-const { authenticateToken } = auth;                // Destructure the function
+const controller = require("../../controllers/admin/admin.product.controller");
+const { authenticateToken } = require("../../middlewares/auth");
 const admin = require("../../middlewares/admin.middleware");
-
-
 
 router.use(authenticateToken);
 router.use(admin);
 
-router.post("/", c.create);
-router.get("/", c.getAll);
-router.put("/:id", c.update);
-router.delete("/:id", c.remove);
+// Product management
+router.post("/", controller.createProduct);
+router.get("/", controller.getAllProducts);
+router.get("/:id", controller.getProductById);
+router.put("/:id", controller.updateProduct);
+
+// Delete handling
+router.patch("/:id/deactivate", controller.deactivateProduct); // soft delete
+router.delete("/:id", controller.deleteProductPermanent);      // hard delete
 
 module.exports = router;

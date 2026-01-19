@@ -1,36 +1,33 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const OrderSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true
+const orderItemSchema = new mongoose.Schema(
+  {
+    product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    price: { type: Number, required: true },
   },
+  { _id: false }
+);
 
-  products: [{
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product"
+const orderSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    items: [orderItemSchema],
+    totalAmount: { type: Number, required: true },
+    status: {
+      type: String,
+      enum: ["Placed", "Processing", "Shipped", "Delivered", "Completed", "Cancelled"],
+      default: "Placed",
     },
-    quantity: Number,
-    price: Number
-  }],
-
-  totalAmount: {
-    type: Number,
-    required: true
+    deliveryType: {
+      type: String,
+      enum: ["physical", "digital"],
+      default: "physical",
+    },
+    paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
+    astrologyReportLink: { type: String }, // For digital/astrology products
   },
+  { timestamps: true }
+);
 
-  paymentStatus: {
-    type: String,
-    enum: ["PENDING", "PAID", "FAILED"],
-    default: "PENDING"
-  },
-
-  orderStatus: {
-    type: String,
-    enum: ["CREATED", "PROCESSING", "COMPLETED", "CANCELLED"],
-    default: "CREATED"
-  }
-}, { timestamps: true });
-
-module.exports = mongoose.model("Order", OrderSchema);
+export default mongoose.model("Order", orderSchema);

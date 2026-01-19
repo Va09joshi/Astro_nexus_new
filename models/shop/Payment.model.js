@@ -1,25 +1,23 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const PaymentSchema = new mongoose.Schema({
-  orderId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Order"
+const paymentSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    order: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
+    amount: { type: Number, required: true },
+    method: {
+      type: String,
+      enum: ["UPI", "Card", "NetBanking", "Wallet"],
+      default: "UPI",
+    },
+    status: {
+      type: String,
+      enum: ["pending", "success", "failed"],
+      default: "pending",
+    },
+    transactionId: { type: String }, // From payment gateway
   },
+  { timestamps: true }
+);
 
-  gateway: {
-    type: String
-  },
-
-  transactionId: {
-    type: String
-  },
-
-  amount: Number,
-
-  status: {
-    type: String,
-    enum: ["SUCCESS", "FAILED"]
-  }
-}, { timestamps: true });
-
-module.exports = mongoose.model("Payment", PaymentSchema);
+export default mongoose.model("Payment", paymentSchema);
