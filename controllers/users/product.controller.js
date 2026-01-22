@@ -31,24 +31,27 @@ export async function getProducts(req, res) {
  */
 export const getProductById = async (req, res) => {
   try {
-    let productId = req.params.id;
+    // Grab productId from route params
+    let productId = req.params.productId;
 
     console.log("Raw productId:", JSON.stringify(productId));
 
-    // Remove newline, spaces, URL encoding
+    // Remove newline, spaces, and decode URL
     productId = decodeURIComponent(productId).trim();
 
     console.log("Clean productId:", productId);
 
+    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: "Invalid product ID" });
     }
 
+    // Fetch product
     const product = await Product.findById(productId)
       .populate("category", "name");
 
     if (!product || !product.isActive) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: "Product not found or inactive" });
     }
 
     res.json({ success: true, product });
@@ -57,4 +60,5 @@ export const getProductById = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch product" });
   }
 };
+
 
