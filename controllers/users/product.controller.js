@@ -1,5 +1,7 @@
 // controllers/users/product.controller.js
 import Product from "../../models/shop/Product.model.js";
+import mongoose from "mongoose";
+
 
 /**
  * =========================
