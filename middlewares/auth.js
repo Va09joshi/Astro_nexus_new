@@ -14,14 +14,18 @@ export function authenticateToken(req, res, next) {
         .json({ error: "Access denied. No token provided." });
     }
 
-    const user = verifyToken(token); // if async, use await
-    if (!user) {
+    const decoded = verifyToken(token); // must return { id: userId }
+
+    if (!decoded || !decoded.id) {
       return res
         .status(401)
         .json({ error: "Invalid or expired token." });
     }
 
-    req.user = user;
+    // ✅ THIS IS THE FIX
+    req.userId = decoded.id; // ObjectId ONLY (for DB)
+    req.user = decoded;      // optional (for other APIs)
+
     next();
   } catch (err) {
     console.error("Token error:", err);
@@ -29,23 +33,19 @@ export function authenticateToken(req, res, next) {
   }
 }
 
-/**
- * Web-based authentication (for server-rendered pages)
- */
 export function authenticateTokenForWeb(req, res, next) {
   try {
     const token = req.cookies?.token;
 
-    if (!token) {
-      return res.redirect("/login");
-    }
+    if (!token) return res.redirect("/login");
 
-    const user = verifyToken(token);
-    if (!user) {
-      return res.redirect("/login");
-    }
+    const decoded = verifyToken(token);
 
-    req.user = user;
+    if (!decoded || !decoded.id) return res.redirect("/login");
+
+    req.userId = decoded.id;
+    req.user = decoded;
+
     next();
   } catch (err) {
     console.error("Web token error:", err);
@@ -53,17 +53,17 @@ export function authenticateTokenForWeb(req, res, next) {
   }
 }
 
-/**
- * Optional authentication: sets req.user if token exists
- */
 export function optionalAuth(req, res, next) {
   try {
     const token =
       req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
     if (token) {
-      const user = verifyToken(token);
-      if (user) req.user = user;
+      const decoded = verifyToken(token);
+      if (decoded?.id) {
+        req.userId = decoded.id;
+        req.user = decoded;
+      }
     }
 
     next();

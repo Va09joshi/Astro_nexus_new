@@ -3,23 +3,17 @@ import mongoose from "mongoose";
 import Product from "../../models/shop/Product.model.js";
 import Cart from "../../models/shop/Cart.model.js";
 
-/**
- * =========================
- * ADD TO CART
- * =========================
- */
 export async function addToCart(req, res) {
   try {
+    const userId = req.userId; // ✅ USE THIS
+
     let { productId, quantity } = req.body;
 
-    // ✅ Clean & validate inputs
     if (!productId || quantity === undefined) {
       return res.status(400).json({ message: "productId and quantity are required" });
     }
 
     productId = decodeURIComponent(productId).trim();
-
-    console.log("ADD TO CART productId:", productId);
 
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: "Invalid product ID" });
@@ -30,19 +24,21 @@ export async function addToCart(req, res) {
       return res.status(400).json({ message: "Quantity must be greater than 0" });
     }
 
-    // ✅ Validate product
     const product = await Product.findById(productId);
     if (!product || !product.isActive || product.isDeleted) {
       return res.status(400).json({ message: "Invalid or inactive product" });
     }
 
-    // ✅ Get or create cart
-    let cart = await Cart.findOne({ user: req.user.id });
+    // ✅ FIX HERE
+    let cart = await Cart.findOne({ user: userId });
+
     if (!cart) {
-      cart = await Cart.create({ user: req.user.id, items: [] });
+      cart = await Cart.create({
+        user: userId, // ✅ FIX HERE
+        items: []
+      });
     }
 
-    // ✅ Add or update item
     const item = cart.items.find(i => i.product.equals(productId));
 
     if (item) {
@@ -52,7 +48,6 @@ export async function addToCart(req, res) {
     }
 
     await cart.save();
-    
     await cart.populate("items.product", "name price images");
 
     res.json({ success: true, cart });
@@ -62,14 +57,11 @@ export async function addToCart(req, res) {
   }
 }
 
-/**
- * =========================
- * GET CART
- * =========================
- */
+
+
 export async function getCart(req, res) {
   try {
-    const cart = await Cart.findOne({ user: req.user.id }).populate(
+    const cart = await Cart.findOne({ user: req.userId }).populate(
       "items.product",
       "name price images"
     );
@@ -84,11 +76,7 @@ export async function getCart(req, res) {
   }
 }
 
-/**
- * =========================
- * REMOVE ITEM FROM CART
- * =========================
- */
+
 export async function removeItem(req, res) {
   try {
     let productId = req.params.productId;
@@ -99,13 +87,11 @@ export async function removeItem(req, res) {
 
     productId = decodeURIComponent(productId).trim();
 
-    console.log("REMOVE CART ITEM productId:", productId);
-
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: "Invalid product ID" });
     }
 
-    const cart = await Cart.findOne({ user: req.user.id });
+    const cart = await Cart.findOne({ user: req.userId }); // ✅ FIX
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
     }
@@ -122,11 +108,7 @@ export async function removeItem(req, res) {
   }
 }
 
-/**
- * =========================
- * UPDATE CART ITEM QUANTITY
- * =========================
- */
+
 export async function updateCartItem(req, res) {
   try {
     let { productId, quantity } = req.body;
@@ -140,8 +122,6 @@ export async function updateCartItem(req, res) {
     productId = decodeURIComponent(productId).trim();
     quantity = Number(quantity);
 
-    console.log("UPDATE CART ITEM:", productId, quantity);
-
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: "Invalid product ID" });
     }
@@ -150,7 +130,7 @@ export async function updateCartItem(req, res) {
       return res.status(400).json({ message: "Quantity must be greater than 0" });
     }
 
-    const cart = await Cart.findOne({ user: req.user.id });
+    const cart = await Cart.findOne({ user: req.userId }); // ✅ FIX
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
     }
