@@ -52,6 +52,8 @@ export async function addToCart(req, res) {
     }
 
     await cart.save();
+    
+    await cart.populate("items.product", "name price images");
 
     res.json({ success: true, cart });
   } catch (err) {
