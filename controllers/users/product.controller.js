@@ -2,42 +2,65 @@
 import Product from "../../models/shop/Product.model.js";
 
 /**
- * LIST PRODUCTS (optional category filter)
+ * =========================
+ * GET ALL PRODUCTS
+ * Optional: filter by category
+ * =========================
  */
 export async function getProducts(req, res) {
   try {
     const filter = {
-      isActive: true
+      isActive: true,
+      isDeleted: false,
     };
 
+    // Optional category filter (?category=categoryId)
     if (req.query.category) {
-      filter.category = req.query.category;
+      filter.category = req.query.category.trim();
+      console.log("Filtering products by category:", filter.category);
     }
 
     const products = await Product.find(filter)
       .populate("category", "name")
       .sort({ createdAt: -1 });
 
-    res.json(products);
+    console.log("Fetched products count:", products.length);
+
+    res.json({ success: true, count: products.length, products });
   } catch (err) {
+    console.error("GET PRODUCTS ERROR:", err);
     res.status(500).json({ message: "Failed to fetch products" });
   }
 }
 
 /**
- * PRODUCT DETAILS
+ * =========================
+ * GET PRODUCT BY ID
+ * =========================
  */
-export async function getProductById(req, res) {
+export const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
+    let productId = decodeURIComponent(req.params.id).trim();
+    console.log("Fetching product ID:", productId);
+
+    // Use Mongoose's built-in ObjectId check
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    const product = await Product.findById(productId)
       .populate("category", "name");
 
     if (!product || !product.isActive) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: "Product not found or inactive" });
     }
 
-    res.json(product);
+    res.json({ success: true, product });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch product" });
+    console.error("GET PRODUCT ERROR:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
-}
+};
+
+
+
