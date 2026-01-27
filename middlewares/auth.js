@@ -3,24 +3,21 @@ import { verifyToken } from "../service/auth.js";
 /**
  * Middleware: Authenticate API token (for Flutter / mobile / API requests)
  */
-export function authenticateToken(req, res, next) {
+export async function authenticateToken(req, res, next) {
   try {
-    // Get token from Authorization header or cookies
     const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({ error: "Access denied. No token provided." });
-    }
+    if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
 
     const decoded = verifyToken(token);
-
-    if (!decoded) {
-      return res.status(401).json({ error: "Invalid or expired token." });
+    if (!decoded?.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+      return res.status(401).json({ error: "Invalid token payload." });
     }
 
-    // Use `id` if available, else fallback to email
-    req.userId = decoded.id || decoded.email;
-    req.user = decoded;
+    const user = await User.findById(decoded.id).select("_id email role");
+    if (!user) return res.status(401).json({ error: "User no longer exists." });
+
+    req.userId = user._id; // ✅ ALWAYS OBJECTID
+    req.user = user;       // ✅ Fresh DB user
 
     next();
   } catch (err) {
