@@ -5,34 +5,25 @@ import User from "../models/user.js"; // adjust path if needed
 /**
  * Middleware: Authenticate API token (for Flutter / mobile / API requests)
  */
-export async function authenticateToken(req, res, next) {
+
+export function authenticateToken(req, res, next) {
   try {
-    // Get token from cookie or Authorization header
+    // Get token from Authorization header or cookies
     const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
 
-    // Decode the token
+    if (!token) {
+      return res.status(401).json({ error: "Access denied. No token provided." });
+    }
+
     const decoded = verifyToken(token);
-    if (!decoded?.id) {
-      return res.status(401).json({ error: "Invalid token payload." });
+
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid or expired token." });
     }
 
-    // Ensure ID is a valid ObjectId
-    let userId;
-    if (mongoose.Types.ObjectId.isValid(decoded.id)) {
-      userId = new mongoose.Types.ObjectId(decoded.id);
-    } else {
-      // fallback if your DB allows string IDs
-      userId = decoded.id;
-    }
-
-    // Find the user in DB
-    const user = await User.findById(userId).select("_id email role");
-    if (!user) return res.status(401).json({ error: "User no longer exists." });
-
-    // Attach user info to request
-    req.userId = user._id;
-    req.user = user;
+    // Use `id` if available, else fallback to email
+    req.userId = decoded.id || decoded.email;
+    req.user = decoded;
 
     next();
   } catch (err) {
