@@ -1,23 +1,38 @@
 import { verifyToken } from "../service/auth.js";
+import mongoose from "mongoose";
+import User from "../models/user.js"; // adjust path if needed
 
 /**
  * Middleware: Authenticate API token (for Flutter / mobile / API requests)
  */
 export async function authenticateToken(req, res, next) {
   try {
+    // Get token from cookie or Authorization header
     const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
 
+    // Decode the token
     const decoded = verifyToken(token);
-    if (!decoded?.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+    if (!decoded?.id) {
       return res.status(401).json({ error: "Invalid token payload." });
     }
 
-    const user = await User.findById(decoded.id).select("_id email role");
+    // Ensure ID is a valid ObjectId
+    let userId;
+    if (mongoose.Types.ObjectId.isValid(decoded.id)) {
+      userId = new mongoose.Types.ObjectId(decoded.id);
+    } else {
+      // fallback if your DB allows string IDs
+      userId = decoded.id;
+    }
+
+    // Find the user in DB
+    const user = await User.findById(userId).select("_id email role");
     if (!user) return res.status(401).json({ error: "User no longer exists." });
 
-    req.userId = user._id; // ✅ ALWAYS OBJECTID
-    req.user = user;       // ✅ Fresh DB user
+    // Attach user info to request
+    req.userId = user._id;
+    req.user = user;
 
     next();
   } catch (err) {

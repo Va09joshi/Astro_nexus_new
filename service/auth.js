@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
  */
 export function createToken(user) {
   const payload = {
-    id: user._id,       // 🔥 must be `id` for middleware
+    id: user._id.toString(), // always a string
     email: user.email,
     name: user.name,
     role: user.role,    // optional but recommended
@@ -22,8 +22,12 @@ export function createToken(user) {
  */
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded token:", decoded);
+    return decoded;
   } catch (error) {
+    console.error("JWT verify error:", error.message);
     return null;
   }
 }
+
