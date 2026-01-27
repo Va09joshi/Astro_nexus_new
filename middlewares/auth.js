@@ -22,7 +22,7 @@ export function authenticateToken(req, res, next) {
     }
 
     // Use `id` if available, else fallback to email
-    req.userId = decoded.id || decoded.email;
+    req.userId = decoded.id || decoded._id;
     req.user = decoded;
 
     next();
