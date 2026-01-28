@@ -9,7 +9,7 @@ export const createPayment = async (req, res) => {
     const { amount } = req.body;
 
     const payment = await Payment.create({
-      user: req.user.id,
+      user: req.userId,
       amount,
       status: "pending",
     });

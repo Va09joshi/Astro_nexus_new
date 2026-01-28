@@ -86,7 +86,7 @@ export const placeOrder = async (req, res) => {
  */
 export const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user.id })
+    const orders = await Order.find({ user: req.userId })
       .populate("items.product", "name price images")
       .populate("address") // ✅ full address details
       .sort({ createdAt: -1 });
@@ -126,7 +126,7 @@ export const getOrderById = async (req, res) => {
       .populate("items.product", "name price images")
       .populate("address"); // ✅ include address info
 
-    if (!order || order.user.toString() !== req.user.id) {
+    if (!order || order.user.toString() !== req.userId) {
       return res.status(404).json({ message: "Order not found" });
     }
 
