@@ -13,7 +13,7 @@ export const getUserAddresses = async (req, res) => {
 // Add a new address
 export const addAddress = async (req, res) => {
   try {
-    const newAddress = new Address({ userId: req.user.id, ...req.body });
+    const newAddress = new Address({ userId: req.userId, ...req.body });
 
     // If setting as default, unset other defaults
     if (req.body.isDefault) {
