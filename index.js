@@ -29,6 +29,8 @@ import adminCMSRoutes from "./routes/admin/admin.cms.routes.js";
 import adminDashboardRoutes from "./routes/admin/admin.dashboard.routes.js";
 import adminCategoryRoutes from "./routes/admin/categories.js";
 import adminUserRoutes from "./routes/admin/admin.user.routes.js";
+import feedbackRoutes from "./routes/feedback.js";
+
 
 // ==================================================
 
@@ -75,6 +77,8 @@ app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/cms", adminCMSRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/categories", adminCategoryRoutes);
+app.use("/api/feedback", feedbackRoutes);
+
 
 // ================= HEALTH CHECK =================
 app.get("/health", (req, res) => {
