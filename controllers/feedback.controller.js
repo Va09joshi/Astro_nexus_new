@@ -6,8 +6,16 @@ export const createFeedback = async (req, res) => {
     const { productId, description } = req.body;
     const user = req.user; // from authenticateToken middleware
 
+    if (!productId || !description) {
+      return res.status(400).json({ success: false, message: "Product ID and description are required" });
+    }
+
+    if (!user || !user._id || !user.name) {
+      return res.status(401).json({ success: false, message: "User information missing" });
+    }
+
     const feedback = new Feedback({
-      productId,
+      productId: mongoose.Types.ObjectId(productId),
       userId: user._id,
       userName: user.name,
       userDisplay: user.astrologyProfile || "",
@@ -17,9 +25,11 @@ export const createFeedback = async (req, res) => {
     await feedback.save();
     res.status(201).json({ success: true, message: "Feedback created", feedback });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // Get feedbacks for a product
 export const getFeedbackByProduct = async (req, res) => {
