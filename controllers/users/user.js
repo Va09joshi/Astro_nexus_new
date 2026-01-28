@@ -7,75 +7,145 @@ import { createToken } from "../../service/auth.js";
 /**
  * User signup
  */
-export async function handleUserSignup(req, res) {
+/* ======================================================
+   1️⃣ BASIC SIGNUP
+   Fields: name, phone, password, email(optional)
+====================================================== */
+export async function handleBasicSignup(req, res) {
   try {
-    const { name, email, phone, password, confirmPassword } = req.body;
+    const { name, phone, password, confirmPassword, email } = req.body;
 
-    // Validation
-    if (!name || !email || !phone || !password || !confirmPassword) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-
-    if (!validator.isEmail(email)) {
-      return res.status(400).json({ error: "Invalid email format" });
+    if (!name || !phone || !password || !confirmPassword) {
+      return res.status(400).json({ error: "Name, phone and password are required" });
     }
 
     if (!validator.isMobilePhone(phone, "any")) {
-      return res.status(400).json({ error: "Invalid phone number format" });
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    if (email && !validator.isEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters long" });
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ $or: [{ phone }, { email }] });
     if (existingUser) {
-      return res.status(400).json({ error: "Email already registered" });
+      return res.status(400).json({ error: "User already exists with phone or email" });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = await User.create({
       name,
-      email,
       phone,
-      password: hashedPassword,
-      role: "user", // default role
-      isBlocked: false,
+      email,
+      password: hashedPassword
     });
 
-    // Generate JWT
     const token = createToken(user);
 
-    // Set cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      message: "User created successfully",
+      message: "Basic signup successful",
       token,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email,
         phone: user.phone,
-        role: user.role,
-        isBlocked: user.isBlocked,
-      },
+        email: user.email
+      }
     });
+
   } catch (error) {
-    console.error("Signup error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("Basic Signup Error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+
+/* ======================================================
+   2️⃣ ASTROLOGY SIGNUP (FULL PROFILE)
+   Fields: All basic + DOB, Time, Place
+====================================================== */
+export async function handleAstrologySignup(req, res) {
+  try {
+    const {
+      name,
+      phone,
+      password,
+      confirmPassword,
+      email,
+      dateOfBirth,
+      timeOfBirth,
+      placeOfBirth
+    } = req.body;
+
+    if (!dateOfBirth || !timeOfBirth || !placeOfBirth) {
+      return res.status(400).json({ error: "Astrology birth details are required" });
+    }
+
+    if (!validator.isMobilePhone(phone, "any")) {
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    if (email && !validator.isEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    const existingUser = await User.findOne({ $or: [{ phone }, { email }] });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      phone,
+      email,
+      password: hashedPassword,
+      astrologyProfile: {
+        dateOfBirth,
+        timeOfBirth,
+        placeOfBirth
+      }
+    });
+
+    const token = createToken(user);
+
+    res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+    res.status(201).json({
+      success: true,
+      message: "Astrology signup successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        astrologyProfile: user.astrologyProfile
+      }
+    });
+
+  } catch (error) {
+    console.error("Astrology Signup Error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 
