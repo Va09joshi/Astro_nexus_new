@@ -2,6 +2,16 @@ import { verifyToken } from "../service/auth.js";
 import mongoose from "mongoose";
 import User from "../models/user.js"; // adjust path if needed
 
+
+// ✅ Admin authorization middleware
+export const authorizeAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+  next();
+};
+
+
 /**
  * Middleware: Authenticate API token (for Flutter / mobile / API requests)
  */

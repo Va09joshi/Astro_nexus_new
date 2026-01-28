@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import Order from "../../models/shop/Order.model.js";
 import Cart from "../../models/shop/Cart.model.js";
+import Address from "../../models/shop/address.js";
 
 /**
  * =========================
@@ -11,20 +12,36 @@ import Cart from "../../models/shop/Cart.model.js";
 export const placeOrder = async (req, res) => {
   try {
     const userId = req.userId;
+    const { addressId, deliveryType } = req.body; // deliveryType: "physical" | "digital"
 
-    const cart = await Cart.findOne({ user: userId })
-      .populate("items.product");
+    // 1️⃣ Validate delivery type
+    if (!deliveryType || !["physical", "digital"].includes(deliveryType)) {
+      return res.status(400).json({ message: "Invalid delivery type" });
+    }
 
+    // 2️⃣ If physical, validate address
+    let address = null;
+    if (deliveryType === "physical") {
+      if (!addressId) {
+        return res.status(400).json({ message: "Address is required for physical delivery" });
+      }
+
+      address = await Address.findOne({ _id: addressId, user: userId });
+      if (!address) {
+        return res.status(400).json({ message: "Invalid address" });
+      }
+    }
+
+    // 3️⃣ Get cart
+    const cart = await Cart.findOne({ user: userId }).populate("items.product");
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // ✅ Validate products before placing order
+    // 4️⃣ Validate products
     for (const item of cart.items) {
       if (!item.product || !item.product.isActive) {
-        return res.status(400).json({
-          message: "One or more products are unavailable"
-        });
+        return res.status(400).json({ message: "One or more products are unavailable" });
       }
     }
 
@@ -33,6 +50,7 @@ export const placeOrder = async (req, res) => {
       0
     );
 
+    // 5️⃣ Create order
     const order = await Order.create({
       user: userId,
       items: cart.items.map(i => ({
@@ -41,10 +59,12 @@ export const placeOrder = async (req, res) => {
         price: i.product.price
       })),
       totalAmount,
-      status: "Placed"
+      status: "Placed",
+      deliveryType,
+      address: address?._id || null // only for physical orders
     });
 
-    // ✅ Clear cart
+    // 6️⃣ Clear cart
     await Cart.deleteOne({ _id: cart._id });
 
     return res.status(201).json({
@@ -68,6 +88,7 @@ export const getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user.id })
       .populate("items.product", "name price images")
+      .populate("address") // ✅ full address details
       .sort({ createdAt: -1 });
 
     return res.json({
@@ -97,14 +118,13 @@ export const getOrderById = async (req, res) => {
     // ✅ FIX %0A ISSUE
     orderId = decodeURIComponent(orderId).trim();
 
-    console.log("ORDER ID RECEIVED:", `"${orderId}"`);
-
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
       return res.status(400).json({ message: "Invalid order ID" });
     }
 
     const order = await Order.findById(orderId)
-      .populate("items.product", "name price images");
+      .populate("items.product", "name price images")
+      .populate("address"); // ✅ include address info
 
     if (!order || order.user.toString() !== req.user.id) {
       return res.status(404).json({ message: "Order not found" });
@@ -114,5 +134,29 @@ export const getOrderById = async (req, res) => {
   } catch (error) {
     console.error("GET ORDER ERROR:", error);
     return res.status(500).json({ message: "Failed to fetch order" });
+  }
+};
+
+/**
+ * =========================
+ * ADMIN: GET ALL ORDERS
+ * =========================
+ */
+export const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("items.product", "name price images")
+      .populate("address")
+      .populate("user", "fullName email") // include user info for admin
+      .sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+  } catch (error) {
+    console.error("GET ALL ORDERS ERROR:", error);
+    return res.status(500).json({ message: "Failed to fetch orders" });
   }
 };

@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken } from "../middlewares/auth.js";
+import { authenticateToken , authorizeAdmin} from "../middlewares/auth.js";
 
 import {
   handleBasicSignup,
@@ -14,6 +14,8 @@ import * as productController from "../controllers/users/product.controller.js";
 import * as cartController from "../controllers/users/cart.controller.js";
 import * as orderController from "../controllers/users/orderController.js";
 import * as paymentController from "../controllers/users/payment.controller.js";
+import * as addressController from "../controllers/users/address.controller.js";
+
 
 const router = express.Router();
 
@@ -41,6 +43,18 @@ router.delete("/cart/remove/:productId", authenticateToken, cartController.remov
 router.post("/orders", authenticateToken, orderController.placeOrder);
 router.get("/orders/my", authenticateToken, orderController.getUserOrders);
 router.get("/orders/:orderId", authenticateToken, orderController.getOrderById);
+
+
+// Admin route
+router.get("/addresses/all", authenticateToken, authorizeAdmin, addressController.getAllAddresses);
+
+//Address
+
+router.get("/addresses", authenticateToken, addressController.getUserAddresses);
+router.post("/addresses/add", authenticateToken, addressController.addAddress);
+router.put("/addresses/:addressId", authenticateToken, addressController.updateAddress);
+router.delete("/addresses/:addressId", authenticateToken, addressController.deleteAddress);
+
 
 // ================== PAYMENT ROUTES ==================
 router.post("/payment/create", authenticateToken, paymentController.createPayment);
