@@ -93,30 +93,41 @@ export async function handleAstrologySignup(req, res) {
       return res.status(400).json({ error: "Astrology birth details are required" });
     }
 
-    if (!validator.isMobilePhone(phone, "any")) {
-      return res.status(400).json({ error: "Invalid phone number" });
+    let user = await User.findOne({ $or: [{ phone }, { email }] }).select("+password");
+
+    // 🟢 CASE 1: USER EXISTS → JUST UPDATE ASTROLOGY DATA
+    if (user) {
+      user.astrologyProfile = {
+        dateOfBirth,
+        timeOfBirth,
+        placeOfBirth
+      };
+
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Astrology profile added successfully",
+        user: {
+          id: user._id,
+          name: user.name,
+          astrologyProfile: user.astrologyProfile
+        }
+      });
     }
 
-    if (email && !validator.isEmail(email)) {
-      return res.status(400).json({ error: "Invalid email format" });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    // 🔵 CASE 2: NEW USER → CREATE FULL ACCOUNT
+    if (!name || !phone || !password || !confirmPassword) {
+      return res.status(400).json({ error: "Basic signup details are required" });
     }
 
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
-    const existingUser = await User.findOne({ $or: [{ phone }, { email }] });
-    if (existingUser) {
-      return res.status(400).json({ error: "User already exists" });
-    }
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    user = await User.create({
       name,
       phone,
       email,
@@ -130,17 +141,15 @@ export async function handleAstrologySignup(req, res) {
 
     const token = createToken(user);
 
-    res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
 
     res.status(201).json({
       success: true,
-      message: "Astrology signup successful",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        astrologyProfile: user.astrologyProfile
-      }
+      message: "User created with astrology profile",
+      token
     });
 
   } catch (error) {
