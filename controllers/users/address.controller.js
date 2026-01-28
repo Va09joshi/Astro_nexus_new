@@ -3,7 +3,7 @@ import Address from "../../models/shop/address.js";
 // Get all addresses for the logged-in user
 export const getUserAddresses = async (req, res) => {
   try {
-    const addresses = await Address.find({ userId: req.user.id });
+    const addresses = await Address.find({ userId: req.userId });
     res.status(200).json(addresses);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -34,7 +34,7 @@ export const addAddress = async (req, res) => {
 export const updateAddress = async (req, res) => {
   try {
     const updated = await Address.findOneAndUpdate(
-      { _id: req.params.addressId, userId: req.user.id },
+      { _id: req.params.addressId, userId: req.userId },
       req.body,
       { new: true }
     );
@@ -50,7 +50,7 @@ export const deleteAddress = async (req, res) => {
   try {
     const deleted = await Address.findOneAndDelete({
       _id: req.params.addressId,
-      userId: req.user.id,
+      userId: req.userId,
     });
     if (!deleted) return res.status(404).json({ message: "Address not found" });
     res.status(200).json({ message: "Address deleted" });
