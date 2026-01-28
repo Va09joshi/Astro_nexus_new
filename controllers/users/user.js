@@ -164,8 +164,10 @@ export async function handleUserLogin(req, res) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // Include password field explicitly because select: false in schema
-    const user = await User.findOne({ email }).select("+password");
+    // Include password + astrologyProfile
+    const user = await User.findOne({ email })
+      .select("+password +astrologyProfile");
+
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
@@ -179,7 +181,6 @@ export async function handleUserLogin(req, res) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Update last login
     user.lastLoginAt = new Date();
     await user.save();
 
@@ -202,6 +203,7 @@ export async function handleUserLogin(req, res) {
         role: user.role,
         isBlocked: user.isBlocked,
         lastLoginAt: user.lastLoginAt,
+        astrologyProfile: user.astrologyProfile || null, // ✅ Added
       },
     });
   } catch (error) {
@@ -215,47 +217,41 @@ export async function handleUserLoginWithPhone(req, res) {
   try {
     const { phone, password } = req.body;
 
-    // 1️⃣ Validate input
     if (!phone || !password) {
       return res.status(400).json({ error: "Phone and password are required" });
     }
 
-    // Optional: validate phone format
     if (!validator.isMobilePhone(phone, "any")) {
       return res.status(400).json({ error: "Invalid phone number format" });
     }
 
-    // 2️⃣ Find user by phone and include password (select: false in schema)
-    const user = await User.findOne({ phone }).select("+password");
+    // Include password + astrologyProfile
+    const user = await User.findOne({ phone })
+      .select("+password +astrologyProfile");
+
     if (!user) {
       return res.status(401).json({ error: "Invalid phone or password" });
     }
 
-    // 3️⃣ Check if user is blocked
     if (user.isBlocked) {
       return res.status(403).json({ error: "This account is blocked" });
     }
 
-    // 4️⃣ Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid phone or password" });
     }
 
-    // 5️⃣ Update last login
     user.lastLoginAt = new Date();
     await user.save();
 
-    // 6️⃣ Generate JWT token
     const token = createToken(user);
 
-    // 7️⃣ Set cookie
     res.cookie("token", token, {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // 8️⃣ Return response
     return res.json({
       success: true,
       message: "Login successful",
@@ -268,6 +264,7 @@ export async function handleUserLoginWithPhone(req, res) {
         role: user.role,
         isBlocked: user.isBlocked,
         lastLoginAt: user.lastLoginAt,
+        astrologyProfile: user.astrologyProfile || null, // ✅ Added
       },
     });
   } catch (error) {
@@ -275,7 +272,6 @@ export async function handleUserLoginWithPhone(req, res) {
     return res.status(500).json({ error: "Internal server error" });
   }
 }
-
 
 /**
  * User logout
