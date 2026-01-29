@@ -3,23 +3,20 @@ const Order = require("../../models/shop/Order.model");
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-  .populate({
-    path: "items.product",
-    select: "name price images",
-    options: { strictPopulate: false }
-  })
-  .populate({
-    path: "user",
-    select: "name email",
-    options: { strictPopulate: false }
-  })
-  .sort({ createdAt: -1 });
-
+      .populate({
+        path: "items.product",
+        select: "name price images",
+      })
+      .populate({
+        path: "user",
+        select: "name email",
+      })
+      .sort({ createdAt: -1 });
 
     res.json({ success: true, count: orders.length, orders });
   } catch (err) {
-    console.error("GET ALL ORDERS ERROR:", err);
-    res.status(500).json({ message: "Failed to fetch all orders" });
+    console.error("GET ALL ORDERS ERROR FULL:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
