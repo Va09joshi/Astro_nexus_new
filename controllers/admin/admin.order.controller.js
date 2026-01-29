@@ -3,9 +3,18 @@ const Order = require("../../models/shop/Order.model");
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate("items.product", "name price images")
-      .populate("user", "name email")
-      .sort({ createdAt: -1 });
+  .populate({
+    path: "items.product",
+    select: "name price images",
+    options: { strictPopulate: false }
+  })
+  .populate({
+    path: "user",
+    select: "name email",
+    options: { strictPopulate: false }
+  })
+  .sort({ createdAt: -1 });
+
 
     res.json({ success: true, count: orders.length, orders });
   } catch (err) {
