@@ -7,7 +7,7 @@ const admin = require("../../middlewares/admin.middleware.js");
 router.use(authenticateToken, admin);
 
 // GET all orders (admin)
-router.get("/orders/all", c.getAllOrders);
+router.get("/all", c.getAllOrders);
 
 // UPDATE order status
 router.put("/orders/:id/status", c.updateStatus);
