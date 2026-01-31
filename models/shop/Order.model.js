@@ -26,8 +26,6 @@ const orderSchema = new mongoose.Schema(
     },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" },
     astrologyReportLink: { type: String }, // For digital/astrology products
-
-    // ✅ Add address reference for physical deliveries
     address: { type: mongoose.Schema.Types.ObjectId, ref: "Address", required: function() {
       return this.deliveryType === "physical";
     } },

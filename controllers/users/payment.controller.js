@@ -1,4 +1,3 @@
-// controllers/users/payment.controller.js
 import Payment from "../../models/shop/Payment.model.js";
 
 /**
@@ -6,15 +5,16 @@ import Payment from "../../models/shop/Payment.model.js";
  */
 export const createPayment = async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, method } = req.body;
 
     const payment = await Payment.create({
       user: req.userId,
       amount,
       status: "pending",
+      method: method || "UPI",
     });
 
-    res.json(payment);
+    res.status(201).json({ success: true, payment });
   } catch (error) {
     console.error("CREATE PAYMENT ERROR:", error);
     res.status(500).json({ message: "Failed to create payment" });
@@ -26,16 +26,18 @@ export const createPayment = async (req, res) => {
  */
 export const verifyPayment = async (req, res) => {
   try {
-    const payment = await Payment.findById(req.body.paymentId);
+    const { paymentId, transactionId } = req.body;
 
-    if (!payment) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
+    const payment = await Payment.findById(paymentId);
+
+    if (!payment) return res.status(404).json({ message: "Payment not found" });
 
     payment.status = "success";
+    if (transactionId) payment.transactionId = transactionId;
+
     await payment.save();
 
-    res.json(payment);
+    res.json({ success: true, payment });
   } catch (error) {
     console.error("VERIFY PAYMENT ERROR:", error);
     res.status(500).json({ message: "Failed to verify payment" });
