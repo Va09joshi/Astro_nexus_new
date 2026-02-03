@@ -21,7 +21,7 @@ export const getDashboardOverview = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("user", "name email")
-      .populate("items.product", "name photo price"); // ensures photo is included
+      .populate("items.product", "name price images");
 
     // 3️⃣ Total revenue
     const revenueAgg = await Order.aggregate([
