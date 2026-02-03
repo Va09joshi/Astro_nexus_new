@@ -106,9 +106,26 @@ export const updatePassword = async (req, res) => {
   }
 };
 
+// 🔹 GET ALL ADMINS
+export const getAllAdmins = async (req, res) => {
+  try {
+    const admins = await Admin.find({}, { password: 0 }); // exclude passwords
+    res.status(200).json({
+      message: "Admins fetched successfully",
+      admins
+    });
+  } catch (error) {
+    console.error("Get All Admins Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 // ==========================
 // 🚪 LOGOUT
 // ==========================
 export const logout = async (req, res) => {
   res.status(200).json({ message: "Logout successful" });
 };
+
+
