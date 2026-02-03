@@ -2,8 +2,9 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import Admin from "../../models/admin.js";
 
-
+// ==========================
 // 🔑 ADMIN LOGIN
+// ==========================
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -29,18 +30,23 @@ export const login = async (req, res) => {
       token,
     });
   } catch (error) {
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
-// create admin (for initial setup)
+// ==========================
+// 🔧 CREATE ADMIN (WITH SETUP KEY)
+// ==========================
 export const createAdmin = async (req, res) => {
   try {
     const { email, password, setupKey } = req.body;
 
-    // Check setup key
-    if (setupKey !== process.env.ADMIN_SETUP_KEY) {
+    // 🔍 Debug logs (for setup key issues)
+    console.log("ENV KEY:", process.env.ADMIN_SETUP_KEY);
+    console.log("BODY KEY:", setupKey);
+
+    if (!setupKey || setupKey !== process.env.ADMIN_SETUP_KEY) {
       return res.status(403).json({ message: "Not authorized to create admin" });
     }
 
@@ -63,12 +69,14 @@ export const createAdmin = async (req, res) => {
       admin: { id: admin._id, email: admin.email },
     });
   } catch (error) {
+    console.error("Create Admin Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
+// ==========================
 // 🔁 UPDATE PASSWORD
+// ==========================
 export const updatePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
@@ -80,6 +88,7 @@ export const updatePassword = async (req, res) => {
     }
 
     const admin = await Admin.findById(req.user.id);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     const isMatch = await bcrypt.compare(oldPassword, admin.password);
     if (!isMatch) {
@@ -92,12 +101,14 @@ export const updatePassword = async (req, res) => {
 
     res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
+    console.error("Update Password Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
+// ==========================
 // 🚪 LOGOUT
+// ==========================
 export const logout = async (req, res) => {
   res.status(200).json({ message: "Logout successful" });
 };
