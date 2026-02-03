@@ -17,21 +17,21 @@ export const getDashboardOverview = async (req, res) => {
     const recentOrders = await Order.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate("user", "name email") // get user name/email
-      .populate("products.product", "name photo price"); // get product details
+      .populate("user", "name email")
+      .populate("items.product", "name photo price"); // ✅ updated field
 
     // 3️⃣ Total revenue
     const revenueAgg = await Order.aggregate([
-      { $match: { status: { $in: ["completed", "delivered"] } } }, // only completed orders
-      { $unwind: "$products" },
-      { $group: { _id: null, totalRevenue: { $sum: { $multiply: ["$products.price", "$products.quantity"] } } } },
+      { $match: { status: { $in: ["Delivered", "Completed"] } } },
+      { $unwind: "$items" },
+      { $group: { _id: null, totalRevenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } } } },
     ]);
     const totalRevenue = revenueAgg[0]?.totalRevenue || 0;
 
     // 4️⃣ Most purchased product
     const mostPurchasedProductAgg = await Order.aggregate([
-      { $unwind: "$products" },
-      { $group: { _id: "$products.product", totalSold: { $sum: "$products.quantity" } } },
+      { $unwind: "$items" },
+      { $group: { _id: "$items.product", totalSold: { $sum: "$items.quantity" } } },
       { $sort: { totalSold: -1 } },
       { $limit: 1 },
     ]);
@@ -44,8 +44,8 @@ export const getDashboardOverview = async (req, res) => {
 
     // 5️⃣ Top user by total purchase
     const topUserAgg = await Order.aggregate([
-      { $unwind: "$products" },
-      { $group: { _id: "$user", totalSpent: { $sum: { $multiply: ["$products.price", "$products.quantity"] } } } },
+      { $unwind: "$items" },
+      { $group: { _id: "$user", totalSpent: { $sum: { $multiply: ["$items.price", "$items.quantity"] } } } },
       { $sort: { totalSpent: -1 } },
       { $limit: 1 },
     ]);
