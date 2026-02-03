@@ -42,7 +42,7 @@ export const getDashboardOverview = async (req, res) => {
     let mostPurchasedProduct = null;
     if (mostPurchasedProductAgg.length > 0) {
       const productId = mostPurchasedProductAgg[0]._id;
-      mostPurchasedProduct = await Product.findById(productId).select("name photo price");
+      mostPurchasedProduct = await Product.findById(productId).select("name images price");
       mostPurchasedProduct = mostPurchasedProduct.toObject(); // convert to plain object
       mostPurchasedProduct.totalSold = mostPurchasedProductAgg[0].totalSold;
     }
