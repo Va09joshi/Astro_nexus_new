@@ -10,15 +10,18 @@ export const getDashboardOverview = async (req, res) => {
       User.countDocuments(),
       Product.countDocuments(),
       Order.countDocuments(),
-      User.find().sort({ createdAt: -1 }).limit(5).select("name email createdAt")
+      User.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("name email createdAt")
     ]);
 
-    // 2️⃣ Recent orders (last 5)
+    // 2️⃣ Recent orders (last 5) with product images
     const recentOrders = await Order.find()
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("user", "name email")
-      .populate("items.product", "name photo price"); // ✅ updated field
+      .populate("items.product", "name photo price"); // ensures photo is included
 
     // 3️⃣ Total revenue
     const revenueAgg = await Order.aggregate([
@@ -35,10 +38,12 @@ export const getDashboardOverview = async (req, res) => {
       { $sort: { totalSold: -1 } },
       { $limit: 1 },
     ]);
+
     let mostPurchasedProduct = null;
     if (mostPurchasedProductAgg.length > 0) {
       const productId = mostPurchasedProductAgg[0]._id;
       mostPurchasedProduct = await Product.findById(productId).select("name photo price");
+      mostPurchasedProduct = mostPurchasedProduct.toObject(); // convert to plain object
       mostPurchasedProduct.totalSold = mostPurchasedProductAgg[0].totalSold;
     }
 
@@ -52,6 +57,7 @@ export const getDashboardOverview = async (req, res) => {
     let topUser = null;
     if (topUserAgg.length > 0) {
       topUser = await User.findById(topUserAgg[0]._id).select("name email");
+      topUser = topUser.toObject(); // convert to plain object
       topUser.totalSpent = topUserAgg[0].totalSpent;
     }
 
