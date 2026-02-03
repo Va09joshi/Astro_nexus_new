@@ -1,65 +1,103 @@
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import Admin from "../../models/admin.js";
 
-// admin email and password (initial setup)
-let ADMIN_EMAIL = "admin@gmail.com";
-let ADMIN_PASSWORD = "admin123";
 
-// login admin
-const login = async (req, res) => {
-  const { email, password } = req.body;
+// 🔑 ADMIN LOGIN
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  // check email and password
-  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Invalid admin credentials" });
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(401).json({ message: "Invalid admin credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid admin credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: admin._id, role: "admin" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
   }
-
-  // create token
-  const token = jwt.sign(
-    { role: "admin", email },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  );
-
-  return res.status(200).json({
-    message: "Login successful",
-    token,
-  });
 };
 
-// update admin password
-const updatePassword = async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
 
-  // check required fields
-  if (!oldPassword || !newPassword) {
-    return res
-      .status(400)
-      .json({ message: "Old password and new password required" });
+// create admin (for initial setup)
+export const createAdmin = async (req, res) => {
+  try {
+    const { email, password, setupKey } = req.body;
+
+    // Check setup key
+    if (setupKey !== process.env.ADMIN_SETUP_KEY) {
+      return res.status(403).json({ message: "Not authorized to create admin" });
+    }
+
+    // Check if admin already exists
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin) {
+      return res.status(400).json({ message: "Admin already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const admin = await Admin.create({
+      email,
+      password: hashedPassword,
+    });
+
+    res.status(201).json({
+      message: "Admin created successfully",
+      admin: { id: admin._id, email: admin.email },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
   }
-
-  // check old password
-  if (oldPassword !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Old password is wrong" });
-  }
-
-  // update password
-  ADMIN_PASSWORD = newPassword;
-
-  return res.status(200).json({
-    message: "Password updated successfully",
-  });
 };
 
-// logout admin
-const logout = async (req, res) => {
-  // jwt logout handled on client side
-  return res.status(200).json({
-    message: "Logout successful",
-  });
+
+// 🔁 UPDATE PASSWORD
+export const updatePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        message: "Old password and new password required",
+      });
+    }
+
+    const admin = await Admin.findById(req.user.id);
+
+    const isMatch = await bcrypt.compare(oldPassword, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Old password is wrong" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    admin.password = hashedPassword;
+    await admin.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
-module.exports = {
-  login,
-  updatePassword,
-  logout,
+
+// 🚪 LOGOUT
+export const logout = async (req, res) => {
+  res.status(200).json({ message: "Logout successful" });
 };
