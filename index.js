@@ -11,7 +11,7 @@ import { fileURLToPath } from "url";
 import { connectToMongoDB } from "./connect.js";
 import { authenticateToken, optionalAuth } from "./middlewares/auth.js";
 import URL from "./models/url.js";
-import tarotRoutes from '../ASTRO_NEXUS/routes/Astrology_service/tarotRoutes.js'
+import tarotRoutes from './routes/Astrology_service/tarotRoutes.js';
 
 
 // ================= EXISTING ROUTES =================
