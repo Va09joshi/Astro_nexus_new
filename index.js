@@ -11,6 +11,8 @@ import { fileURLToPath } from "url";
 import { connectToMongoDB } from "./connect.js";
 import { authenticateToken, optionalAuth } from "./middlewares/auth.js";
 import URL from "./models/url.js";
+import tarotRoutes from '../ASTRO_NEXUS/routes/Astrology_service/tarotRoutes.js'
+
 
 // ================= EXISTING ROUTES =================
 import predictionsRoute from "./routes/predictions.js";
@@ -20,6 +22,7 @@ import staticRoute from "./routes/staticRouter.js";
 import userRoute from "./routes/user.js";
 import compatibilityRoute from "./routes/compatablity.js";
 import horoscopeRoute from "./routes/Astrology_service/horoscope.js";
+
 
 // ================= ADMIN ROUTES =================
 import adminAuthRoutes from "./routes/admin/admin.auth.routes.js";
@@ -78,6 +81,7 @@ app.use("/api/admin/cms", adminCMSRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/categories", adminCategoryRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/tarot", tarotRoutes); 
 
 
 // ================= HEALTH CHECK =================
