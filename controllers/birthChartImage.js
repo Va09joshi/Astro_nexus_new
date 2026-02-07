@@ -90,7 +90,7 @@ exports.generateBirthChart = async (req, res) => {
 
       // Zodiac sign
       y += 20;
-      ctx.font = "18px Arial";
+      ctx.font = "20px Arial";
       ctx.fillText(house.sign, pos.x, y);
 
       // Planets (full names)
