@@ -98,7 +98,7 @@ exports.generateBirthChart = async (req, res) => {
         y += 24;
         house.planets.forEach((p, i) => {
           ctx.fillStyle = planetColors[p] || "#000";
-          ctx.font = "bold 20px Arial";
+          ctx.font = "bold 22px Arial";
           ctx.fillText(p, pos.x, y + (i * 18));
         });
       }
