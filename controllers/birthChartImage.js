@@ -2,59 +2,70 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const { createCanvas } = require("canvas");
-const BirthChart = require("../models/birthChartModel.js");
+const BirthChart = require("../models/birthChartModel");
+
+const planetColors = {
+  Sun: "#ff6600",
+  Moon: "#666666",
+  Mars: "#cc0000",
+  Mercury: "#009933",
+  Jupiter: "#cc9900",
+  Venus: "#ff3399",
+  Saturn: "#000099",
+  Rahu: "#660099",
+  Ketu: "#663300",
+  Uranus: "#009999",
+  Neptune: "#333399",
+  Pluto: "#000000"
+};
 
 exports.generateBirthChart = async (req, res) => {
   try {
-    const {
-      name,
-      gender,
-      birth_date,
-      birth_time,
-      place_of_birth,
-      astrology_type,
-      ayanamsa,
-    } = req.body;
+    const body = req.body;
 
-    // ================= CALL ASTROLOGY API =================
-    const apiResponse = await axios.post(
+    // 🔮 Call astrology API
+    const apiRes = await axios.post(
       "https://astro-nexus-backend-9u1s.onrender.com/api/v1/chart",
-      {
-        name,
-        gender,
-        birth_date,
-        birth_time,
-        place_of_birth,
-        astrology_type,
-        ayanamsa,
-      }
+      body
     );
 
-    const chartData = apiResponse.data;
+    const chartData = apiRes.data;
 
-    // ================= CREATE CHART IMAGE =================
-    const canvasSize = 900;
-    const canvas = createCanvas(canvasSize, canvasSize);
+    // 🧭 TRUE NORTH INDIAN HOUSE CENTERS (FIXED)
+    const H = {
+      1:{x:450,y:260},
+      2:{x:240,y:120},   // ✅ Top center fixed
+      3:{x:105,y:250},
+      4:{x:240,y:470},
+      5:{x:130,y:650},
+      6:{x:250,y:768},   // ✅ Bottom center fixed
+      7:{x:450,y:610},
+      8:{x:660,y:780},
+      9:{x:790,y:650},
+      10:{x:630,y:470},
+      11:{x:770,y:260},
+      12:{x:650,y:150}
+    };
+
+    // 🎨 Canvas setup
+    const canvas = createCanvas(900, 900);
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvasSize, canvasSize);
+    ctx.fillStyle = "#f8f1e4";   // warm parchment / panchang paper tone
+    ctx.fillRect(0, 0, 900, 900);
 
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 4;
 
-    // Outer square
+    ctx.strokeStyle = "#4e342e";   // deep brown sacred-ink tone
+    ctx.lineWidth = 3;
+
+
     ctx.strokeRect(50, 50, 800, 800);
 
-    // Diagonals
     ctx.beginPath();
-    ctx.moveTo(50, 50);
-    ctx.lineTo(850, 850);
-    ctx.moveTo(850, 50);
-    ctx.lineTo(50, 850);
+    ctx.moveTo(50, 50); ctx.lineTo(850, 850);
+    ctx.moveTo(850, 50); ctx.lineTo(50, 850);
     ctx.stroke();
 
-    // Middle diamond lines
     ctx.beginPath();
     ctx.moveTo(450, 50);
     ctx.lineTo(850, 450);
@@ -63,62 +74,71 @@ exports.generateBirthChart = async (req, res) => {
     ctx.closePath();
     ctx.stroke();
 
-    ctx.font = "28px Arial";
-    ctx.fillStyle = "#000";
+    ctx.textAlign = "center";
 
-    // House labels (North Indian Style)
-    const housePositions = [
-      { h: "H1", x: 430, y: 470 },
-      { h: "H2", x: 430, y: 120 },
-      { h: "H3", x: 120, y: 300 },
-      { h: "H4", x: 250, y: 470 },
-      { h: "H5", x: 120, y: 650 },
-      { h: "H6", x: 430, y: 780 },
-      { h: "H7", x: 430, y: 600 },
-      { h: "H8", x: 650, y: 780 },
-      { h: "H9", x: 780, y: 650 },
-      { h: "H10", x: 650, y: 470 },
-      { h: "H11", x: 780, y: 300 },
-      { h: "H12", x: 650, y: 120 },
-    ];
+    // 🏠 Draw houses, signs, planets
+    Object.entries(H).forEach(([num, pos]) => {
+      const house = chartData.houses[num];
+      if (!house) return;
 
-    housePositions.forEach(pos => ctx.fillText(pos.h, pos.x, pos.y));
+      let y = pos.y - 35;
 
-    // ================= SAVE IMAGE =================
-    const chartsDir = path.join(__dirname, "../charts");
-    if (!fs.existsSync(chartsDir)) fs.mkdirSync(chartsDir);
+      // House label
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 18px Arial";
+      ctx.fillText(`H${num}`, pos.x, y);
+
+      // Zodiac sign
+      y += 20;
+      ctx.font = "16px Arial";
+      ctx.fillText(house.sign, pos.x, y);
+
+      // Planets (full names)
+      if (house.planets.length) {
+        y += 24;
+        house.planets.forEach((p, i) => {
+          ctx.fillStyle = planetColors[p] || "#000";
+          ctx.font = "bold 16px Arial";
+          ctx.fillText(p, pos.x, y + (i * 18));
+        });
+      }
+    });
+
+    // 🌟 Ascendant
+    const ascHouse = chartData.ascendant?.house;
+    if (ascHouse && H[ascHouse]) {
+      ctx.fillStyle = "red";
+      ctx.font = "bold 16px Arial";
+      ctx.fillText("Ascendant", H[ascHouse].x, H[ascHouse].y - 60);
+    }
+
+    // 💾 Save image
+    const dir = path.join(__dirname, "../charts");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
     const fileName = `chart_${Date.now()}.png`;
-    const filePath = path.join(chartsDir, fileName);
+    const filePath = path.join(dir, fileName);
+    fs.writeFileSync(filePath, canvas.toBuffer("image/png"));
 
-    const buffer = canvas.toBuffer("image/png");
-    fs.writeFileSync(filePath, buffer);
-
-    // ================= SAVE TO MONGODB =================
-    const newChart = await BirthChart.create({
-      name,
-      gender,
-      birth_date,
-      birth_time,
-      place_of_birth,
-      astrology_type,
-      ayanamsa,
+    // 🗄 Save DB
+    const saved = await BirthChart.create({
+      ...body,
       chartImage: `/charts/${fileName}`,
-      chartData // full astrology API response saved
+      chartData
     });
 
     res.status(201).json({
       success: true,
-      message: "Birth chart generated successfully",
-      data: newChart,
+      message: "Birth chart generated with corrected house alignment",
+      data: saved
     });
 
-  } catch (error) {
-    console.error(error.response?.data || error.message);
+  } catch (err) {
+    console.error(err.response?.data || err.message);
     res.status(500).json({
       success: false,
-      message: "Error generating birth chart",
-      error: error.message,
+      message: "Chart generation failed",
+      error: err.message
     });
   }
 };
