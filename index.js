@@ -13,16 +13,14 @@ import { authenticateToken, optionalAuth } from "./middlewares/auth.js";
 import URL from "./models/url.js";
 import tarotRoutes from './routes/Astrology_service/tarotRoutes.js';
 
-
 // ================= EXISTING ROUTES =================
 import predictionsRoute from "./routes/predictions.js";
-import birthChartRoute from "./routes/birthchart.js";
+import birthChartRoute from "./routes/users/birthChartRoutes.js";
 import urlRoute from "./routes/url.js";
 import staticRoute from "./routes/staticRouter.js";
 import userRoute from "./routes/user.js";
 import compatibilityRoute from "./routes/compatablity.js";
 import horoscopeRoute from "./routes/Astrology_service/horoscope.js";
-
 
 // ================= ADMIN ROUTES =================
 import adminAuthRoutes from "./routes/admin/admin.auth.routes.js";
@@ -33,7 +31,6 @@ import adminDashboardRoutes from "./routes/admin/admin.dashboard.routes.js";
 import adminCategoryRoutes from "./routes/admin/categories.js";
 import adminUserRoutes from "./routes/admin/admin.user.routes.js";
 import feedbackRoutes from "./routes/feedback.js";
-
 
 // ==================================================
 
@@ -65,24 +62,27 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// ================= STATIC FOLDER FOR CHART IMAGES =================
+// This makes saved birth chart images publicly accessible
+app.use("/charts", express.static(path.join(__dirname, "charts")));
+
 // ================= PUBLIC APIs =================
 app.use("/api/predictions", predictionsRoute);
-app.use("/api/birthchart", birthChartRoute);
+app.use("/api/birthchart", birthChartRoute); // Birth chart generation + DB save
+
 app.use("/api/v1/compatibility", compatibilityRoute);
 app.use("/api/horoscope", horoscopeRoute);
-
 
 // ================= ADMIN APIs =================
 app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/admin/products", adminProductRoutes);
-app.use("/api/admin/users", adminUserRoutes); // ✅ FIXED
+app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/cms", adminCMSRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/categories", adminCategoryRoutes);
 app.use("/api/feedback", feedbackRoutes);
-app.use("/api/tarot", tarotRoutes); 
-
+app.use("/api/tarot", tarotRoutes);
 
 // ================= HEALTH CHECK =================
 app.get("/health", (req, res) => {
