@@ -85,12 +85,12 @@ exports.generateBirthChart = async (req, res) => {
 
       // House label
       ctx.fillStyle = "#000";
-      ctx.font = "bold 18px Arial";
+      ctx.font = "bold 24px Arial";
       ctx.fillText(`H${num}`, pos.x, y);
 
       // Zodiac sign
       y += 20;
-      ctx.font = "16px Arial";
+      ctx.font = "18px Arial";
       ctx.fillText(house.sign, pos.x, y);
 
       // Planets (full names)
@@ -98,7 +98,7 @@ exports.generateBirthChart = async (req, res) => {
         y += 24;
         house.planets.forEach((p, i) => {
           ctx.fillStyle = planetColors[p] || "#000";
-          ctx.font = "bold 16px Arial";
+          ctx.font = "bold 20px Arial";
           ctx.fillText(p, pos.x, y + (i * 18));
         });
       }
