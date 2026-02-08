@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 const astrologySchema = new mongoose.Schema({
   dateOfBirth: { type: Date },
@@ -9,13 +10,23 @@ const astrologySchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    phone: { type: String, required: true },
+
+    phone: { type: String, required: true, unique: true },
+
     password: { type: String, required: true, select: false },
 
-    // Secondary email (optional but unique if provided)
+    // Optional but unique email
     email: { type: String, unique: true, sparse: true },
 
-    // Astrology profile (optional during basic signup)
+    // ⭐ Permanent session ID for astrology conversations
+    sessionId: {
+      type: String,
+      unique: true,
+      index: true,
+      default: () => crypto.randomBytes(16).toString("hex")
+    },
+
+    // Astrology profile
     astrologyProfile: astrologySchema,
 
     role: {

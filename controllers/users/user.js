@@ -1,4 +1,3 @@
-// controllers/users/user.js
 import bcrypt from "bcryptjs";
 import validator from "validator";
 import User from "../../models/user.js";
@@ -45,7 +44,13 @@ export async function handleBasicSignup(req, res) {
       message: "Basic signup successful",
       token,
       refreshToken,
-      user: { id: user._id, name: user.name, phone: user.phone, email: user.email }
+      user: {
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        sessionId: user.sessionId   // ⭐ added
+      }
     });
 
   } catch (error) {
@@ -101,7 +106,12 @@ export async function handleAstrologySignup(req, res) {
       message: "Astrology signup successful",
       token,
       refreshToken,
-      user: { id: user._id, name: user.name, astrologyProfile: user.astrologyProfile }
+      user: {
+        id: user._id,
+        name: user.name,
+        sessionId: user.sessionId,   // ⭐ added
+        astrologyProfile: user.astrologyProfile
+      }
     });
 
   } catch (error) {
@@ -140,7 +150,17 @@ export async function handleUserLogin(req, res) {
       message: "Login successful",
       token,
       refreshToken,
-      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, isBlocked: user.isBlocked, lastLoginAt: user.lastLoginAt, astrologyProfile: user.astrologyProfile || null }
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isBlocked: user.isBlocked,
+        lastLoginAt: user.lastLoginAt,
+        sessionId: user.sessionId,  // ⭐ added
+        astrologyProfile: user.astrologyProfile || null
+      }
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -178,7 +198,17 @@ export async function handleUserLoginWithPhone(req, res) {
       message: "Login successful",
       token,
       refreshToken,
-      user: { id: user._id, name: user.name, phone: user.phone, email: user.email, role: user.role, isBlocked: user.isBlocked, lastLoginAt: user.lastLoginAt, astrologyProfile: user.astrologyProfile || null }
+      user: {
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        isBlocked: user.isBlocked,
+        lastLoginAt: user.lastLoginAt,
+        sessionId: user.sessionId,  // ⭐ added
+        astrologyProfile: user.astrologyProfile || null
+      }
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -206,7 +236,12 @@ export async function handleRefreshToken(req, res) {
     res.cookie("token", newToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.cookie("refreshToken", newRefreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
 
-    return res.json({ success: true, token: newToken, refreshToken: newRefreshToken });
+    return res.json({
+      success: true,
+      token: newToken,
+      refreshToken: newRefreshToken,
+      sessionId: user.sessionId   // ⭐ helpful for frontend re-sync
+    });
   } catch (err) {
     console.error("Refresh token error:", err);
     return res.status(500).json({ error: "Internal server error" });
