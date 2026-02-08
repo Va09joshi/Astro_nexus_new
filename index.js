@@ -31,6 +31,8 @@ import adminDashboardRoutes from "./routes/admin/admin.dashboard.routes.js";
 import adminCategoryRoutes from "./routes/admin/categories.js";
 import adminUserRoutes from "./routes/admin/admin.user.routes.js";
 import feedbackRoutes from "./routes/feedback.js";
+import chatbotRoutes from "./routes/chatbot.routes.js";
+
 
 // ==================================================
 
@@ -69,6 +71,8 @@ app.use("/charts", express.static(path.join(__dirname, "charts")));
 // ================= PUBLIC APIs =================
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute); // Birth chart generation + DB save
+app.use("/api/chatbot", chatbotRoutes);
+
 
 app.use("/api/v1/compatibility", compatibilityRoute);
 app.use("/api/horoscope", horoscopeRoute);
