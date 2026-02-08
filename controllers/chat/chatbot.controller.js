@@ -6,7 +6,7 @@ const sendToMatiAI = async (payload, retries = 2) => {
     return await axios.post(
       "https://mati-ai.onrender.com/chat",
       payload,
-      { timeout: 15000 } // 15s safety timeout
+      { timeout: 15000 }
     );
   } catch (err) {
     if (err.response?.status === 429 && retries > 0) {
@@ -20,7 +20,7 @@ const sendToMatiAI = async (payload, retries = 2) => {
 
 export const askAstrologyChatbot = async (req, res) => {
   try {
-    const { session_id, question, birth_input } = req.body;
+    const { session_id, question } = req.body;
 
     if (!session_id || !question) {
       return res.status(400).json({
@@ -29,21 +29,38 @@ export const askAstrologyChatbot = async (req, res) => {
       });
     }
 
-    let payloadBirthInput;
+    const user = await User.findOne({ sessionId: session_id });
 
-    // 🔹 1. Try DB birth data
-    const user = await User.findOne({ sessionId: session_id }).select("name astrologyProfile");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
 
-    if (user && user.astrologyProfile?.dateOfBirth) {
+    let payload = {
+      session_id,
+      question
+    };
+
+    /**
+     * 🧠 FIRST MESSAGE ONLY → SEND BIRTH DATA
+     */
+    if (!user.chatInitialized) {
+      if (!user.astrologyProfile?.dateOfBirth) {
+        return res.status(400).json({
+          success: false,
+          message: "Birth details missing in profile"
+        });
+      }
+
       const dob = new Date(user.astrologyProfile.dateOfBirth);
-
       let [hour, minute] = user.astrologyProfile.timeOfBirth.split(":").map(Number);
 
-      // Convert 24h → 12h format for API
       const ampm = hour >= 12 ? "PM" : "AM";
       hour = hour % 12 || 12;
 
-      payloadBirthInput = {
+      payload.birth_input = {
         name: user.name,
         gender: user.astrologyProfile.gender || "male",
         birth_date: {
@@ -56,27 +73,16 @@ export const askAstrologyChatbot = async (req, res) => {
         astrology_type: "vedic",
         ayanamsa: "lahiri"
       };
+
+      // Mark chat initialized so next time birth data is NOT sent
+      user.chatInitialized = true;
+      await user.save();
     }
 
-    // 🔹 2. Fallback to request birth_input
-    else if (birth_input) {
-      payloadBirthInput = birth_input;
-    }
-
-    // 🔹 3. No birth data anywhere
-    else {
-      return res.status(400).json({
-        success: false,
-        message: "Birth details required either from profile or request"
-      });
-    }
-
-    // 🚀 Send request with retry protection
-    const aiResponse = await sendToMatiAI({
-      session_id,
-      birth_input: payloadBirthInput,
-      question
-    });
+    /**
+     * 🚀 Send to Mati AI
+     */
+    const aiResponse = await sendToMatiAI(payload);
 
     return res.json({
       success: true,
@@ -94,7 +100,7 @@ export const askAstrologyChatbot = async (req, res) => {
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Chatbot service failed",
       error: error.response?.data || error.message

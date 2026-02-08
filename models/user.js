@@ -10,12 +10,9 @@ const astrologySchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-
     phone: { type: String, required: true, unique: true },
-
     password: { type: String, required: true, select: false },
 
-    // Optional but unique email
     email: { type: String, unique: true, sparse: true },
 
     // ⭐ Permanent session ID for astrology conversations
@@ -28,6 +25,12 @@ const userSchema = new mongoose.Schema(
 
     // Astrology profile
     astrologyProfile: astrologySchema,
+
+    // ⭐ NEW — Track if birth chart already sent to AI
+    chatInitialized: {
+      type: Boolean,
+      default: false
+    },
 
     role: {
       type: String,
