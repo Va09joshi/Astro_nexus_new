@@ -3,15 +3,13 @@ import User from "../../models/user.js";
 
 const sendToMatiAI = async (payload, retries = 2) => {
   try {
-    return await axios.post(
-      "https://mati-ai.onrender.com/chat",
-      payload,
-      { timeout: 15000 }
-    );
+    return await axios.post("https://mati-ai.onrender.com/chat", payload, {
+      timeout: 20000
+    });
   } catch (err) {
     if (err.response?.status === 429 && retries > 0) {
-      console.log("⏳ Mati AI rate limited. Retrying in 6 seconds...");
-      await new Promise(res => setTimeout(res, 6000));
+      console.log("⏳ Rate limited. Retrying in 8 seconds...");
+      await new Promise(r => setTimeout(r, 8000));
       return sendToMatiAI(payload, retries - 1);
     }
     throw err;
@@ -25,42 +23,29 @@ export const askAstrologyChatbot = async (req, res) => {
     if (!session_id || !question) {
       return res.status(400).json({
         success: false,
-        message: "session_id and question are required"
+        message: "session_id and question required"
       });
     }
 
+    // 🔍 Find logged-in user birth details
     const user = await User.findOne({ sessionId: session_id });
 
-    if (!user) {
+    if (!user || !user.astrologyProfile?.dateOfBirth) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "Birth profile missing. Please complete astrology profile."
       });
     }
 
-    let payload = {
+    const dob = new Date(user.astrologyProfile.dateOfBirth);
+    let [hour, minute] = user.astrologyProfile.timeOfBirth.split(":").map(Number);
+
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+
+    const payload = {
       session_id,
-      question
-    };
-
-    /**
-     * 🧠 FIRST MESSAGE ONLY → SEND BIRTH DATA
-     */
-    if (!user.chatInitialized) {
-      if (!user.astrologyProfile?.dateOfBirth) {
-        return res.status(400).json({
-          success: false,
-          message: "Birth details missing in profile"
-        });
-      }
-
-      const dob = new Date(user.astrologyProfile.dateOfBirth);
-      let [hour, minute] = user.astrologyProfile.timeOfBirth.split(":").map(Number);
-
-      const ampm = hour >= 12 ? "PM" : "AM";
-      hour = hour % 12 || 12;
-
-      payload.birth_input = {
+      birth_input: {
         name: user.name,
         gender: user.astrologyProfile.gender || "male",
         birth_date: {
@@ -72,16 +57,10 @@ export const askAstrologyChatbot = async (req, res) => {
         place_of_birth: user.astrologyProfile.placeOfBirth,
         astrology_type: "vedic",
         ayanamsa: "lahiri"
-      };
+      },
+      question
+    };
 
-      // Mark chat initialized so next time birth data is NOT sent
-      user.chatInitialized = true;
-      await user.save();
-    }
-
-    /**
-     * 🚀 Send to Mati AI
-     */
     const aiResponse = await sendToMatiAI(payload);
 
     return res.json({
@@ -96,11 +75,11 @@ export const askAstrologyChatbot = async (req, res) => {
     if (error.response?.status === 429) {
       return res.status(429).json({
         success: false,
-        message: "Astrology service is busy. Please try again in a minute."
+        message: "Astrology service busy. Please wait a minute."
       });
     }
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Chatbot service failed",
       error: error.response?.data || error.message
