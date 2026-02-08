@@ -3,24 +3,25 @@ import User from "../../models/user.js";
 
 export const askAstrologyChatbot = async (req, res) => {
   try {
-    const { session_id, question } = req.body;
+    const { session_id, question, birth_input } = req.body;
 
     if (!session_id || !question) {
-      return res.status(400).json({ success: false, message: "session_id and question are required" });
+      return res.status(400).json({
+        success: false,
+        message: "session_id and question are required"
+      });
     }
 
-    // 🔍 Find user by sessionId
-    const user = await User.findOne({ sessionId: session_id }).select("+astrologyProfile name");
-    if (!user || !user.astrologyProfile) {
-      return res.status(404).json({ success: false, message: "User birth data not found" });
-    }
+    let payloadBirthInput;
 
-    const dob = new Date(user.astrologyProfile.dateOfBirth);
+    // 🔹 1. Try getting birth data from DB
+    const user = await User.findOne({ sessionId: session_id }).select("name astrologyProfile");
 
-    // 🧬 Build payload for Mati AI
-    const payload = {
-      session_id,
-      birth_input: {
+    if (user && user.astrologyProfile?.dateOfBirth) {
+      const dob = new Date(user.astrologyProfile.dateOfBirth);
+      const [hour, minute] = user.astrologyProfile.timeOfBirth.split(":").map(Number);
+
+      payloadBirthInput = {
         name: user.name,
         gender: user.astrologyProfile.gender || "male",
         birth_date: {
@@ -29,21 +30,40 @@ export const askAstrologyChatbot = async (req, res) => {
           day: dob.getDate()
         },
         birth_time: {
-          hour: parseInt(user.astrologyProfile.timeOfBirth.split(":")[0]),
-          minute: parseInt(user.astrologyProfile.timeOfBirth.split(":")[1]),
-          ampm: parseInt(user.astrologyProfile.timeOfBirth.split(":")[0]) >= 12 ? "PM" : "AM"
+          hour,
+          minute,
+          ampm: hour >= 12 ? "PM" : "AM"
         },
         place_of_birth: user.astrologyProfile.placeOfBirth,
         astrology_type: "vedic",
         ayanamsa: "lahiri"
-      },
-      question
-    };
+      };
+    }
+
+    // 🔹 2. If DB data not found, use request birth_input
+    else if (birth_input) {
+      payloadBirthInput = birth_input;
+    }
+
+    // 🔹 3. If still no birth data → error
+    else {
+      return res.status(400).json({
+        success: false,
+        message: "Birth details required either from profile or request"
+      });
+    }
 
     // 🚀 Send to Mati AI
-    const aiResponse = await axios.post("https://mati-ai.onrender.com/chat", payload);
+    const aiResponse = await axios.post(
+      "https://mati-ai.onrender.com/chat",
+      {
+        session_id,
+        birth_input: payloadBirthInput,
+        question
+      }
+    );
 
-    res.json({
+    return res.json({
       success: true,
       session_id,
       answer: aiResponse.data.answer || aiResponse.data.response || aiResponse.data
