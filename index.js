@@ -31,7 +31,8 @@ import adminDashboardRoutes from "./routes/admin/admin.dashboard.routes.js";
 import adminCategoryRoutes from "./routes/admin/categories.js";
 import adminUserRoutes from "./routes/admin/admin.user.routes.js";
 import feedbackRoutes from "./routes/feedback.js";
-import chatbotRoutes from "./routes/chatbot.routes.js";
+import chatbotRoutes from "./routes/chatbot.routes.js"
+import adminAstroRoutes from "./routes/admin/adminAstrologyRoutes.js";
 
 
 // ==================================================
@@ -87,6 +88,8 @@ app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/categories", adminCategoryRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/tarot", tarotRoutes);
+app.use("/api/admin/astrology", adminAstroRoutes);
+
 
 // ================= HEALTH CHECK =================
 app.get("/health", (req, res) => {
