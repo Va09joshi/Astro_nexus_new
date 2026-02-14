@@ -20,19 +20,26 @@ exports.getAstrologyDashboard = async (req, res) => {
 };
 
 exports.toggleFeature = async (req, res) => {
-  const { featureKey, enabled } = req.body;
+  const { key, enabled } = req.body;
 
-  if (!featureKey) {
+  if (!key) {
     return res.status(400).json({
       success: false,
-      message: "featureKey is required"
+      message: "key is required"
     });
   }
 
   const feature = await FeatureFlag.findOneAndUpdate(
-    { key: featureKey },
-    { enabled },
-    { new: true }
+    { key },
+    {
+      key,
+      name: key.replace("_", " ").toUpperCase(),
+      enabled
+    },
+    {
+      new: true,
+      upsert: true   // ⭐ THIS IS THE FIX
+    }
   );
 
   res.json({ success: true, data: feature });
