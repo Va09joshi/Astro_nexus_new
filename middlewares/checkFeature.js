@@ -11,5 +11,7 @@ exports.checkFeatureEnabled = (featureKey) => async (req, res, next) => {
   }
 
   req.featureKey = featureKey;
+  console.log("Feature key set:", req.featureKey);
+
   next();
 };
