@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken , authorizeAdmin} from "../middlewares/auth.js";
+import { authenticateToken , authorizeAdmin} from "../../middlewares/auth.js";
 
 import {
   handleBasicSignup,
@@ -7,14 +7,15 @@ import {
   handleUserLogin,
   handleUserLogout,
   handleUserLoginWithPhone // ✅ import the new phone login
-} from "../controllers/users/user.js";
+} from "../../controllers/users/user.js";
 
-import * as categoryController from "../controllers/users/category.controller.js";
-import * as productController from "../controllers/users/product.controller.js";
-import * as cartController from "../controllers/users/cart.controller.js";
-import * as orderController from "../controllers/users/orderController.js";
-import * as paymentController from "../controllers/users/payment.controller.js";
-import * as addressController from "../controllers/users/address.controller.js";
+import * as categoryController from "../../controllers/users/category.controller.js";
+import * as productController from "../../controllers/users/product.controller.js";
+import * as cartController from "../../controllers/users/cart.controller.js";
+import * as orderController from "../../controllers/users/orderController.js";
+import * as paymentController from "../../controllers/users/payment.controller.js";
+import * as addressController from "../../controllers/users/address.controller.js";
+import { verifyFirebaseOtp } from "../../controllers/users/firebase_auth.js";
 
 
 const router = express.Router();
@@ -25,6 +26,10 @@ router.post("/signup/astrology", handleAstrologySignup);  // Full astrology sign
 router.post("/login", handleUserLogin);                   // login by email
 router.post("/login/phone", handleUserLoginWithPhone);   // login by phone
 router.post("/logout", authenticateToken, handleUserLogout);
+
+
+router.post("/verify-otp", verifyFirebaseOtp);
+
 
 // ================== CATEGORY ROUTES ==================
 router.get("/categories", categoryController.getActiveCategories);

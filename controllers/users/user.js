@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import validator from "validator";
-import User from "../../models/user.js";
+import User from "../../models/user/user.js";
 import { createToken, createRefreshToken, verifyRefreshToken } from "../../service/auth.js";
 
 /* ======================================================

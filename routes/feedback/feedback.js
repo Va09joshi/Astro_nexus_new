@@ -3,8 +3,8 @@ import {
   createFeedback,
   getFeedbackByProduct,
   getAllFeedbacks
-} from "../controllers/feedback.controller.js";
-import { authenticateToken } from "../middlewares/auth.js";
+} from "../../controllers/feedback.controller.js";
+import { authenticateToken } from "../../middlewares/auth.js";
 
 const router = express.Router();
 
