@@ -13,42 +13,32 @@ export const createProduct = async (req, res) => {
       astrologyType,
       stock,
       description,
-      images,
       isActive,
       deliveryType
     } = req.body;
 
     // ✅ REQUIRED VALIDATION
     if (!name || price === undefined) {
-      return res.status(400).json({
-        message: "Name and price are required"
-      });
+      return res.status(400).json({ message: "Name and price are required" });
     }
 
     if (Number(price) <= 0) {
-      return res.status(400).json({
-        message: "Price must be greater than 0"
-      });
+      return res.status(400).json({ message: "Price must be greater than 0" });
     }
 
     // ✅ CATEGORY VALIDATION
     let categoryId = null;
     if (category) {
-      const cat = await Category.findOne({
-        _id: category,
-        isActive: true
-      });
-
+      const cat = await Category.findOne({ _id: category, isActive: true });
       if (!cat) {
-        return res.status(400).json({
-          message: "Invalid or inactive category"
-        });
+        return res.status(400).json({ message: "Invalid or inactive category" });
       }
-
       categoryId = cat._id;
     }
 
-    // ✅ CREATE PRODUCT
+    // ✅ CLOUDINARY IMAGES (THIS IS THE FIX)
+    const images = req.files ? req.files.map(file => file.path) : [];
+
     const product = await Product.create({
       name,
       description,
@@ -56,7 +46,7 @@ export const createProduct = async (req, res) => {
       stock: stock ?? 0,
       category: categoryId,
       astrologyType: astrologyType || "gemstone",
-      images: Array.isArray(images) ? images : [],
+      images, // ✅ Cloudinary URLs
       deliveryType: deliveryType || "physical",
       isActive: isActive ?? true
     });
@@ -136,11 +126,11 @@ export const getProductById = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    // Category validation
     if (req.body.category) {
       const cat = await Category.findOne({
         _id: req.body.category,
@@ -152,6 +142,12 @@ export const updateProduct = async (req, res) => {
       }
 
       req.body.category = cat._id;
+    }
+
+    // ✅ Append new images if uploaded
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map(file => file.path);
+      product.images.push(...newImages);
     }
 
     Object.assign(product, req.body);

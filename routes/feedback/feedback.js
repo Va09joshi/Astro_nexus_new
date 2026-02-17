@@ -2,7 +2,8 @@ import express from "express";
 import {
   createFeedback,
   getFeedbackByProduct,
-  getAllFeedbacks
+  getAllFeedbacks,
+  deleteFeedback
 } from "../../controllers/feedback.controller.js";
 import { authenticateToken } from "../../middlewares/auth.js";
 
@@ -16,5 +17,12 @@ router.get("/:productId", getFeedbackByProduct);
 
 // Get all feedbacks (admin)
 router.get("/", authenticateToken, getAllFeedbacks);
+
+router.delete(
+  "/:feedbackId",
+  authenticateToken,
+  deleteFeedback
+);
+
 
 export default router;

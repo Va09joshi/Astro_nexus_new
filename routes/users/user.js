@@ -18,6 +18,8 @@ import * as orderController from "../../controllers/users/orderController.js";
 import * as paymentController from "../../controllers/users/payment.controller.js";
 import * as addressController from "../../controllers/users/address.controller.js";
 import { verifyFirebaseOtp } from "../../controllers/users/firebase_auth.js";
+import uploadProfile from "../../middlewares/upload.js";
+
 
 
 const router = express.Router();
@@ -29,7 +31,7 @@ router.post("/login", handleUserLogin);                   // login by email
 router.post("/login/phone", handleUserLoginWithPhone);   // login by phone
 router.post("/logout", authenticateToken, handleUserLogout);
 
-router.post("/profile-image", uploadProfileImage);
+router.post("/profile-image", authenticateToken, uploadProfile.single("image"), uploadProfileImage);
 router.get("/me", authenticateToken, getMyProfile);
 
 
@@ -58,6 +60,13 @@ router.get("/orders/:orderId", authenticateToken, orderController.getOrderById);
 
 // Admin route
 router.get("/addresses/all", authenticateToken, authorizeAdmin, addressController.getAllAddresses);
+router.delete(
+  "/admin/addresses/:addressId",
+  authenticateToken,
+  authorizeAdmin,
+  addressController.deleteAddress
+);
+
 
 //Address
 

@@ -133,3 +133,58 @@ export const getAllFeedbacks = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+/* -------------------------------------------------------
+   ⭐ Delete Feedback (User or Admin)
+--------------------------------------------------------*/
+export const deleteFeedback = async (req, res) => {
+  try {
+    const { feedbackId } = req.params;
+    const user = req.user;
+
+    if (!mongoose.Types.ObjectId.isValid(feedbackId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid feedback ID",
+      });
+    }
+
+    const feedback = await Feedback.findById(feedbackId);
+    if (!feedback) {
+      return res.status(404).json({
+        success: false,
+        message: "Feedback not found",
+      });
+    }
+
+    // ✅ Authorization check
+    const isOwner = feedback.userId.toString() === user._id.toString();
+    const isAdmin = user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to delete this feedback",
+      });
+    }
+
+    const productId = feedback.productId;
+
+    await feedback.deleteOne();
+
+    // ⭐ Recalculate product rating
+    await updateProductRating(productId);
+
+    res.status(200).json({
+      success: true,
+      message: "Feedback deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete feedback error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
