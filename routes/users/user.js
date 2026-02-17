@@ -6,7 +6,9 @@ import {
   handleAstrologySignup,
   handleUserLogin,
   handleUserLogout,
-  handleUserLoginWithPhone // ✅ import the new phone login
+  handleUserLoginWithPhone
+  , uploadProfileImage, getMyProfile
+   // ✅ import the new phone login
 } from "../../controllers/users/user.js";
 
 import * as categoryController from "../../controllers/users/category.controller.js";
@@ -26,6 +28,10 @@ router.post("/signup/astrology", handleAstrologySignup);  // Full astrology sign
 router.post("/login", handleUserLogin);                   // login by email
 router.post("/login/phone", handleUserLoginWithPhone);   // login by phone
 router.post("/logout", authenticateToken, handleUserLogout);
+
+router.post("/profile-image", uploadProfileImage);
+router.get("/me", authenticateToken, getMyProfile);
+
 
 
 router.post("/verify-otp", verifyFirebaseOtp);

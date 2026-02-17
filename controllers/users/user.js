@@ -2,6 +2,10 @@ import bcrypt from "bcryptjs";
 import validator from "validator";
 import User from "../../models/user/user.js";
 import { createToken, createRefreshToken, verifyRefreshToken } from "../../service/auth.js";
+import cloudinary from "../../service/config/cloudinary.js";
+import upload from "../../middlewares/upload.js";
+import { authenticateToken } from "../../middlewares/auth.js";
+
 
 /* ======================================================
    1️⃣ BASIC SIGNUP
@@ -216,6 +220,32 @@ export async function handleUserLoginWithPhone(req, res) {
   }
 }
 
+/// ========================= get my profile =========================
+
+export async function getMyProfile(req, res) {
+  try {
+    const user = await User.findById(req.user.id).select(
+      "name email phone profileImage"
+    );
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({
+      success: true,
+      user: {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage || null
+      }
+    });
+  } catch (err) {
+    console.error("Get profile error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+
 /* ======================================================
    REFRESH TOKEN
 ====================================================== */
@@ -248,6 +278,45 @@ export async function handleRefreshToken(req, res) {
   }
 }
 
+// ========================= upload //========================
+
+export const uploadProfileImage = [
+  authenticateToken,
+  upload.single("profileImg"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No image uploaded" });
+      }
+
+      const user = await User.findById(req.userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      // Delete old image
+      if (user.profileImage?.publicId) {
+        await cloudinary.uploader.destroy(user.profileImage.publicId);
+      }
+
+      user.profileImage = {
+        url: req.file.path,
+        publicId: req.file.filename
+      };
+
+      await user.save();
+
+      res.json({
+        success: true,
+        profileImage: user.profileImage
+      });
+    } catch (err) {
+      console.error("Profile image upload error:", err);
+      res.status(500).json({ error: "Image upload failed" });
+    }
+  }
+];
+
+
+
 /* ======================================================
    USER LOGOUT
 ====================================================== */
@@ -256,3 +325,4 @@ export async function handleUserLogout(req, res) {
   res.clearCookie("refreshToken");
   return res.json({ success: true, message: "Logged out successfully" });
 }
+
