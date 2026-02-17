@@ -1,9 +1,9 @@
-const Order = require("../../models/shop/Order.model.js");
+import Order from "../../models/shop/Order.model.js";
 
 /**
- * GET ALL ORDERS (ADMIN)
+ * GET ALL ORDERS
  */
-exports.getAllOrders = async (req, res) => {
+export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate({ path: "items.product", select: "name price images" })
@@ -24,7 +24,7 @@ exports.getAllOrders = async (req, res) => {
 /**
  * UPDATE ORDER STATUS
  */
-exports.updateStatus = async (req, res) => {
+export const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -51,9 +51,9 @@ exports.updateStatus = async (req, res) => {
 };
 
 /**
- * DELETE ORDER (ADMIN)
+ * DELETE ORDER
  */
-exports.deleteOrder = async (req, res) => {
+export const deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -75,14 +75,14 @@ exports.deleteOrder = async (req, res) => {
 };
 
 /**
- * ORDER COUNTS (ADMIN DASHBOARD)
+ * ORDER COUNTS
  */
-exports.getOrderCounts = async (req, res) => {
+export const getOrderCounts = async (req, res) => {
   try {
     const total = await Order.countDocuments();
-    const completed = await Order.countDocuments({ status: "completed" });
-    const pending = await Order.countDocuments({ status: "pending" });
-    const cancelled = await Order.countDocuments({ status: "cancelled" });
+    const completed = await Order.countDocuments({ status: "Completed" });
+    const pending = await Order.countDocuments({ status: "Placed" });
+    const cancelled = await Order.countDocuments({ status: "Cancelled" });
 
     res.json({
       success: true,
@@ -98,9 +98,9 @@ exports.getOrderCounts = async (req, res) => {
 };
 
 /**
- * GET ORDERS BY USER (ADMIN)
+ * ORDERS BY USER
  */
-exports.getOrdersByUser = async (req, res) => {
+export const getOrdersByUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
