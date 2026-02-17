@@ -285,6 +285,9 @@ export const uploadProfileImage = [
   upload.single("profileImg"),
   async (req, res) => {
     try {
+      console.log("👉 req.userId:", req.userId);
+      console.log("👉 req.file:", req.file);
+
       if (!req.file) {
         return res.status(400).json({ error: "No image uploaded" });
       }
@@ -292,7 +295,6 @@ export const uploadProfileImage = [
       const user = await User.findById(req.userId);
       if (!user) return res.status(404).json({ error: "User not found" });
 
-      // Delete old image
       if (user.profileImage?.publicId) {
         await cloudinary.uploader.destroy(user.profileImage.publicId);
       }
@@ -309,11 +311,16 @@ export const uploadProfileImage = [
         profileImage: user.profileImage
       });
     } catch (err) {
-      console.error("Profile image upload error:", err);
-      res.status(500).json({ error: "Image upload failed" });
+      console.error("🔥 FULL ERROR 🔥");
+      console.error(err);
+      res.status(500).json({
+        error: "Image upload failed",
+        message: err.message
+      });
     }
   }
 ];
+
 
 
 
