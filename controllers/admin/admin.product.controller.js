@@ -127,10 +127,10 @@ export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    // CATEGORY VALIDATION
+    // ✅ CATEGORY VALIDATION
     if (req.body.category) {
       const cat = await Category.findOne({
         _id: req.body.category,
@@ -138,32 +138,36 @@ export const updateProduct = async (req, res) => {
       });
 
       if (!cat) {
-        return res.status(400).json({ message: "Invalid category" });
+        return res.status(400).json({ success: false, message: "Invalid category" });
       }
 
       req.body.category = cat._id;
     }
 
-    // 🗑 REMOVE EXISTING IMAGES
+    // ❌ REMOVE IMAGES
+    let removedImages = [];
     if (req.body.removedImages) {
-      const removedImages = Array.isArray(req.body.removedImages)
-        ? req.body.removedImages
-        : [req.body.removedImages];
+      removedImages = JSON.parse(req.body.removedImages);
 
+      // Remove from DB
       product.images = product.images.filter(
         img => !removedImages.includes(img)
       );
+
+      // OPTIONAL: delete from disk
+      removedImages.forEach(path => {
+        if (fs.existsSync(path)) fs.unlinkSync(path);
+      });
     }
 
-    // ➕ ADD NEW IMAGES
+    // ✅ ADD NEW IMAGES
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map(file => file.path);
       product.images.push(...newImages);
     }
 
-    // ✏️ UPDATE OTHER FIELDS
+    // ✅ UPDATE OTHER FIELDS
     Object.assign(product, req.body);
-
     await product.save();
 
     res.json({
@@ -174,9 +178,13 @@ export const updateProduct = async (req, res) => {
 
   } catch (err) {
     console.error("UPDATE PRODUCT ERROR:", err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
 
 /**
  * ================= SOFT DELETE (DEACTIVATE) =================
