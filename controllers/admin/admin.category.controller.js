@@ -55,6 +55,7 @@ export const updateCategory = async (req, res) => {
  * TOGGLE CATEGORY STATUS
  * PATCH /api/admin/categories/:id/toggle
  */
+
 export const toggleCategoryStatus = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);

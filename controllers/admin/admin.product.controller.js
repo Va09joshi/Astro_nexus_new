@@ -130,11 +130,11 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Category validation
+    // CATEGORY VALIDATION
     if (req.body.category) {
       const cat = await Category.findOne({
         _id: req.body.category,
-        isActive: true
+        isActive: true,
       });
 
       if (!cat) {
@@ -144,19 +144,32 @@ export const updateProduct = async (req, res) => {
       req.body.category = cat._id;
     }
 
-    // ✅ Append new images if uploaded
+    // 🗑 REMOVE EXISTING IMAGES
+    if (req.body.removedImages) {
+      const removedImages = Array.isArray(req.body.removedImages)
+        ? req.body.removedImages
+        : [req.body.removedImages];
+
+      product.images = product.images.filter(
+        img => !removedImages.includes(img)
+      );
+    }
+
+    // ➕ ADD NEW IMAGES
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map(file => file.path);
       product.images.push(...newImages);
     }
 
+    // ✏️ UPDATE OTHER FIELDS
     Object.assign(product, req.body);
+
     await product.save();
 
     res.json({
       success: true,
       message: "Product updated successfully",
-      product
+      product,
     });
 
   } catch (err) {
