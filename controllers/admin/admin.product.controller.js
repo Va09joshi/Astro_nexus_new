@@ -144,20 +144,13 @@ export const updateProduct = async (req, res) => {
       req.body.category = cat._id;
     }
 
-    // ❌ REMOVE IMAGES
-    let removedImages = [];
+    // ❌ REMOVE IMAGES (DB ONLY — Cloudinary safe)
     if (req.body.removedImages) {
-      removedImages = JSON.parse(req.body.removedImages);
+      const removedImages = JSON.parse(req.body.removedImages);
 
-      // Remove from DB
       product.images = product.images.filter(
         img => !removedImages.includes(img)
       );
-
-      // OPTIONAL: delete from disk
-      removedImages.forEach(path => {
-        if (fs.existsSync(path)) fs.unlinkSync(path);
-      });
     }
 
     // ✅ ADD NEW IMAGES
@@ -184,6 +177,7 @@ export const updateProduct = async (req, res) => {
     });
   }
 };
+
 
 
 /**
