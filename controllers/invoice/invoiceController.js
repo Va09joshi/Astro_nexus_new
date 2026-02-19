@@ -15,7 +15,7 @@ const WEBSITE = "https://astronexus.com";
 
 const SOCIALS = [
   { label: "Website", url: WEBSITE },
-  { label: "Instagram", url: "https://instagram.com/astronexus" },
+  { label: "Instagram", url: "https://www.instagram.com/astronexusind?igsh=MTNhcmQ3a2QxcXY0aA==" },
   { label: "Support", url: `mailto:${SUPPORT_EMAIL}` },
 ];
 
@@ -196,16 +196,13 @@ export const generateInvoice = async (req, res) => {
 
     doc.fillColor("#0f3c5f").fontSize(9)
       .text("View full order details",
-        centerX - 70,
+        centerX - 90,
         tableTop + 230,
         { link: orderUrl, underline: true });
 
     /* ================= SOCIAL ================= */
 
     let socialY = tableTop + 260;
-    doc.font("Helvetica-Bold").fontSize(10).fillColor("#000")
-      .text("Connect with us", 0, socialY, { align: "center" });
-
     let offset = -80;
     SOCIALS.forEach((s) => {
       doc.fillColor("#0f3c5f").fontSize(9)
