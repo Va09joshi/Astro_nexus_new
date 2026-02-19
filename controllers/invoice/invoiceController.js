@@ -13,6 +13,12 @@ const COMPANY = "Astronexus Web Pvt Ltd";
 const SUPPORT_EMAIL = "support@astronexus.com";
 const WEBSITE = "https://astronexus.com";
 
+const SOCIALS = [
+  { label: "Website", url: WEBSITE },
+  { label: "Instagram", url: "https://instagram.com/astronexus" },
+  { label: "Support", url: `mailto:${SUPPORT_EMAIL}` },
+];
+
 const getOrderUrl = (id) => `${WEBSITE}/orders/${id}`;
 
 /* ================= PATH ================= */
@@ -39,7 +45,7 @@ const mailer = nodemailer.createTransport({
   },
 });
 
-/* ================= GENERATE INVOICE ================= */
+/* ================= GENERATE ================= */
 
 export const generateInvoice = async (req, res) => {
   try {
@@ -47,7 +53,8 @@ export const generateInvoice = async (req, res) => {
 
     const order = await Order.findById(orderId)
       .populate("items.product", "name price images")
-      .populate("user", "fullName email");
+      .populate("user", "fullName email")
+      .populate("address");
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
@@ -58,7 +65,6 @@ export const generateInvoice = async (req, res) => {
       (sum, i) => sum + i.price * i.quantity,
       0
     );
-
     const gstAmount = (subtotal * GST_RATE) / 100;
     const grandTotal = subtotal + gstAmount;
 
@@ -87,14 +93,33 @@ export const generateInvoice = async (req, res) => {
     /* ================= META ================= */
 
     let y = 90;
-
-    doc.rect(40, y, pageWidth - 80, 95).stroke("#dcdcdc");
+    doc.rect(40, y, pageWidth - 80, 120).stroke("#dcdcdc");
 
     doc.fontSize(10).fillColor("#333");
-    doc.font("Helvetica-Bold").text("Bill To:", 50, y + 10);
-    doc.font("Helvetica").text(order.user.fullName, 50, y + 25);
-    doc.text(order.user.email, 50, y + 40);
 
+    // BILL TO
+    doc.font("Helvetica-Bold").text("Bill To:", 50, y + 10);
+    doc.font("Helvetica")
+      .text(order.user.fullName, 50, y + 25)
+      .text(order.user.email, 50, y + 40);
+
+    if (order.address) {
+      doc.text(
+        [
+          order.address.line1,
+          order.address.line2,
+          `${order.address.city || ""} ${order.address.state || ""}`,
+          order.address.zip,
+        ]
+          .filter(Boolean)
+          .join(", "),
+        50,
+        y + 55,
+        { width: 240 }
+      );
+    }
+
+    // META RIGHT
     doc.font("Helvetica-Bold").text("Invoice ID:", 320, y + 10);
     doc.fillColor("#0f3c5f")
       .text(orderId, 400, y + 10, { link: orderUrl, underline: true });
@@ -108,8 +133,7 @@ export const generateInvoice = async (req, res) => {
 
     /* ================= PRODUCTS ================= */
 
-    let tableTop = y + 120;
-
+    let tableTop = y + 145;
     const col = { img: 50, name: 95, qty: 310, price: 370, total: 450 };
 
     const drawTableHeader = () => {
@@ -126,10 +150,10 @@ export const generateInvoice = async (req, res) => {
     drawTableHeader();
 
     for (const item of order.items) {
-      if (tableTop > pageHeight - 250) {
+      if (tableTop > pageHeight - 260) {
         doc.addPage();
         drawHeader();
-        tableTop = 80;
+        tableTop = 90;
         drawTableHeader();
       }
 
@@ -150,22 +174,22 @@ export const generateInvoice = async (req, res) => {
       tableTop += 45;
     }
 
-    /* ================= TAX SUMMARY ================= */
+    /* ================= TOTAL ================= */
 
     const boxX = centerX - 160;
-
     doc.rect(boxX, tableTop + 20, 320, 90).stroke("#0f3c5f");
 
-    doc.font("Helvetica-Bold").text("Subtotal", boxX + 20, tableTop + 35);
-    doc.text(formatCurrency(subtotal), boxX + 200, tableTop + 35);
+    doc.font("Helvetica-Bold")
+      .text("Subtotal", boxX + 20, tableTop + 35)
+      .text(`GST (${GST_RATE}%)`, boxX + 20, tableTop + 55)
+      .text("Grand Total", boxX + 20, tableTop + 75);
 
-    doc.text(`GST (${GST_RATE}%)`, boxX + 20, tableTop + 55);
-    doc.text(formatCurrency(gstAmount), boxX + 200, tableTop + 55);
+    doc.font("Helvetica")
+      .text(formatCurrency(subtotal), boxX + 200, tableTop + 35)
+      .text(formatCurrency(gstAmount), boxX + 200, tableTop + 55)
+      .text(formatCurrency(grandTotal), boxX + 200, tableTop + 75);
 
-    doc.text("Grand Total", boxX + 20, tableTop + 75);
-    doc.text(formatCurrency(grandTotal), boxX + 200, tableTop + 75);
-
-    /* ================= QR + LINK ================= */
+    /* ================= QR ================= */
 
     const qr = await QRCode.toBuffer(orderUrl);
     doc.image(qr, centerX - 45, tableTop + 130, { width: 90 });
@@ -176,20 +200,41 @@ export const generateInvoice = async (req, res) => {
         tableTop + 230,
         { link: orderUrl, underline: true });
 
+    /* ================= SOCIAL ================= */
+
+    let socialY = tableTop + 260;
+    doc.font("Helvetica-Bold").fontSize(10).fillColor("#000")
+      .text("Connect with us", 0, socialY, { align: "center" });
+
+    let offset = -80;
+    SOCIALS.forEach((s) => {
+      doc.fillColor("#0f3c5f").fontSize(9)
+        .text(
+          s.label,
+          centerX + offset,
+          socialY + 20,
+          { link: s.url, underline: true }
+        );
+      offset += 80;
+    });
+
     /* ================= SIGNATURE ================= */
 
-    doc.fontSize(8).fillColor("#555")
+    doc.fillColor("#555").fontSize(8)
       .text(
         `Digitally signed by ${COMPANY}\nGenerated on ${new Date().toLocaleString()}`,
-        40,
-        pageHeight - 70
+        0,
+        pageHeight - 70,
+        { align: "center" }
       );
 
     /* ================= FOOTER ================= */
 
     doc.rect(0, pageHeight - 20, pageWidth, 20).fill("#0f3c5f");
     doc.fillColor("#fff").fontSize(8)
-      .text("Thank you for shopping with Astronexus", 0, pageHeight - 15, { align: "center" });
+      .text("Thank you for shopping with Astronexus", 0, pageHeight - 15, {
+        align: "center",
+      });
 
     doc.end();
 
@@ -204,9 +249,7 @@ export const generateInvoice = async (req, res) => {
           <p>Your invoice is attached.</p>
           <p><a href="${orderUrl}">View Order Online</a></p>
         `,
-        attachments: [
-          { filename: `invoice-${orderId}.pdf`, path: pdfPath },
-        ],
+        attachments: [{ filename: `invoice-${orderId}.pdf`, path: pdfPath }],
       });
 
       res.json({
@@ -234,25 +277,10 @@ export const previewInvoice = (req, res) => {
 /* ================= DOWNLOAD ================= */
 
 export const downloadInvoice = (req, res) => {
-  try {
-    const { orderId } = req.params;
+  const pdf = path.join(invoiceFolder, `${req.params.orderId}.pdf`);
+  if (!fs.existsSync(pdf)) return res.status(404).json({ message: "Not found" });
 
-    const pdfPath = path.join(invoiceFolder, `${orderId}.pdf`);
-
-    if (!fs.existsSync(pdfPath)) {
-      return res.status(404).json({ message: "Invoice not found" });
-    }
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=invoice-${orderId}.pdf`
-    );
-
-    fs.createReadStream(pdfPath).pipe(res);
-  } catch (err) {
-    console.error("DOWNLOAD ERROR:", err);
-    res.status(500).json({ message: "Invoice download failed" });
-  }
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename=invoice-${req.params.orderId}.pdf`);
+  fs.createReadStream(pdf).pipe(res);
 };
-
