@@ -142,6 +142,7 @@ export const deleteFeedback = async (req, res) => {
     const { feedbackId } = req.params;
     const user = req.user;
 
+    // 1️⃣ Validate feedback ID
     if (!mongoose.Types.ObjectId.isValid(feedbackId)) {
       return res.status(400).json({
         success: false,
@@ -149,6 +150,7 @@ export const deleteFeedback = async (req, res) => {
       });
     }
 
+    // 2️⃣ Find feedback
     const feedback = await Feedback.findById(feedbackId);
     if (!feedback) {
       return res.status(404).json({
@@ -157,7 +159,15 @@ export const deleteFeedback = async (req, res) => {
       });
     }
 
-    // ✅ Authorization check
+    // 3️⃣ Ensure user and feedback.userId exist
+    if (!user || !user._id || !feedback.userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user or feedback data",
+      });
+    }
+
+    // 4️⃣ Authorization check
     const isOwner = feedback.userId.toString() === user._id.toString();
     const isAdmin = user.role === "admin";
 
@@ -170,21 +180,29 @@ export const deleteFeedback = async (req, res) => {
 
     const productId = feedback.productId;
 
+    // 5️⃣ Delete feedback
     await feedback.deleteOne();
 
-    // ⭐ Recalculate product rating
-    await updateProductRating(productId);
+    // 6️⃣ Recalculate product rating (safe)
+    try {
+      await updateProductRating(productId);
+    } catch (ratingErr) {
+      console.error(`Failed to update rating for product ${productId}:`, ratingErr);
+    }
 
+    // 7️⃣ Return success
     res.status(200).json({
       success: true,
       message: "Feedback deleted successfully",
     });
+
   } catch (err) {
     console.error("Delete feedback error:", err);
     res.status(500).json({
       success: false,
-      message: err.message,
+      message: err.message || "Server error",
     });
   }
 };
+
 
