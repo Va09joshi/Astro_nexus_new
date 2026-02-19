@@ -2,10 +2,20 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import QRCode from "qrcode";
+import nodemailer from "nodemailer";
 import Order from "../../models/shop/Order.model.js";
 import { fileURLToPath } from "url";
 
-/* ================= PATH SETUP ================= */
+/* ================= CONFIG ================= */
+
+const GST_RATE = 18;
+const COMPANY = "Astronexus Web Pvt Ltd";
+const SUPPORT_EMAIL = "support@astronexus.com";
+const WEBSITE = "https://astronexus.com";
+
+const getOrderUrl = (id) => `${WEBSITE}/orders/${id}`;
+
+/* ================= PATH ================= */
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,124 +23,126 @@ const __dirname = path.dirname(__filename);
 const invoiceFolder = path.join(__dirname, "../../invoices");
 const uploadFolder = path.join(__dirname, "../../uploads");
 
-if (!fs.existsSync(invoiceFolder)) {
-  fs.mkdirSync(invoiceFolder, { recursive: true });
-}
+if (!fs.existsSync(invoiceFolder)) fs.mkdirSync(invoiceFolder, { recursive: true });
 
-const formatCurrency = (amount) => `₹${Number(amount).toFixed(2)}`;
+const formatCurrency = (n) => `₹${Number(n).toFixed(2)}`;
+
+/* ================= EMAIL ================= */
+
+const mailer = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_EMAIL,
+    pass: process.env.SMTP_PASSWORD,
+  },
+});
 
 /* ================= GENERATE INVOICE ================= */
 
 export const generateInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
-    if (!orderId) return res.status(400).json({ message: "Order ID required" });
 
     const order = await Order.findById(orderId)
       .populate("items.product", "name price images")
-      .populate("user", "fullName email")
-      .populate("address");
+      .populate("user", "fullName email");
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const pdfPath = path.join(invoiceFolder, `${orderId}.pdf`);
+    const orderUrl = getOrderUrl(orderId);
+
+    const subtotal = order.items.reduce(
+      (sum, i) => sum + i.price * i.quantity,
+      0
+    );
+
+    const gstAmount = (subtotal * GST_RATE) / 100;
+    const grandTotal = subtotal + gstAmount;
 
     const doc = new PDFDocument({ size: "A4", margin: 40 });
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
     const pageWidth = doc.page.width;
-    const contentWidth = pageWidth - 80;
+    const pageHeight = doc.page.height;
     const centerX = pageWidth / 2;
 
     /* ================= HEADER ================= */
 
-    doc.rect(0, 0, pageWidth, 8).fill("#0f3c5f");
+    const drawHeader = () => {
+      doc.rect(0, 0, pageWidth, 8).fill("#0f3c5f");
+      doc.fillColor("#0f3c5f").font("Helvetica-Bold").fontSize(22)
+        .text("ASTRONEXUS", 40, 30);
+      doc.fontSize(10).fillColor("#555")
+        .text("Premium Astrology & Digital Products", 40, 55);
+      doc.font("Helvetica-Bold").fontSize(18).fillColor("#000")
+        .text("INVOICE", 0, 40, { align: "right" });
+    };
 
-    doc.fillColor("#0f3c5f").font("Helvetica-Bold").fontSize(22)
-      .text("ASTRONEXUS", 40, 30);
-
-    doc.fontSize(10).fillColor("#555")
-      .text("Premium Astrology & Digital Products", 40, 55);
-
-    doc.font("Helvetica-Bold").fontSize(18).fillColor("#000")
-      .text("INVOICE", 0, 40, { align: "right" });
+    drawHeader();
 
     /* ================= META ================= */
 
-    const metaTop = 90;
-    doc.rect(40, metaTop, contentWidth, 90).stroke("#dcdcdc");
+    let y = 90;
+
+    doc.rect(40, y, pageWidth - 80, 95).stroke("#dcdcdc");
 
     doc.fontSize(10).fillColor("#333");
-    doc.font("Helvetica-Bold").text("From:", 50, metaTop + 10);
-    doc.font("Helvetica").text("Astronexus Web Pvt Ltd", 50, metaTop + 25);
-    doc.text("support@astronexus.com", 50, metaTop + 40);
+    doc.font("Helvetica-Bold").text("Bill To:", 50, y + 10);
+    doc.font("Helvetica").text(order.user.fullName, 50, y + 25);
+    doc.text(order.user.email, 50, y + 40);
 
-    doc.font("Helvetica-Bold").text("Bill To:", 300, metaTop + 10);
-    doc.font("Helvetica").text(order.user?.fullName || "N/A", 300, metaTop + 25);
-    doc.text(order.user?.email || "N/A", 300, metaTop + 40);
+    doc.font("Helvetica-Bold").text("Invoice ID:", 320, y + 10);
+    doc.fillColor("#0f3c5f")
+      .text(orderId, 400, y + 10, { link: orderUrl, underline: true });
 
-    if (order.address) {
-      doc.text(
-        `${order.address.line1 || ""}\n${order.address.line2 || ""}\n${order.address.city || ""}, ${order.address.state || ""}\n${order.address.zip || ""}`,
-        300,
-        metaTop + 55
-      );
-    }
+    doc.fillColor("#333");
+    doc.font("Helvetica-Bold").text("Date:", 320, y + 30);
+    doc.font("Helvetica").text(new Date().toLocaleDateString(), 400, y + 30);
 
-    doc.font("Helvetica-Bold").text("Invoice ID:", 50, metaTop + 65);
-    doc.font("Helvetica").text(String(order._id), 120, metaTop + 65);
+    doc.font("Helvetica-Bold").text("Status:", 320, y + 50);
+    doc.font("Helvetica").text(order.status, 400, y + 50);
 
-    doc.font("Helvetica-Bold").text("Date:", 50, metaTop + 80);
-    doc.font("Helvetica").text(new Date().toLocaleDateString(), 90, metaTop + 80);
+    /* ================= PRODUCTS ================= */
 
-    doc.font("Helvetica-Bold").text("Status:", 300, metaTop + 80);
-    doc.font("Helvetica").text(order.status, 350, metaTop + 80);
+    let tableTop = y + 120;
 
-    /* ================= PRODUCT TABLE ================= */
+    const col = { img: 50, name: 95, qty: 310, price: 370, total: 450 };
 
-    let tableTop = metaTop + 120;
-
-    const col = {
-      image: 50,
-      name: 90,
-      qty: 320,
-      price: 380,
-      total: 450,
-    };
-
-    const drawHeader = () => {
-      doc.rect(40, tableTop, contentWidth, 25).fill("#0f3c5f");
+    const drawTableHeader = () => {
+      doc.rect(40, tableTop, pageWidth - 80, 25).fill("#0f3c5f");
       doc.fillColor("#fff").font("Helvetica-Bold").fontSize(10)
         .text("Product", col.name, tableTop + 7)
         .text("Qty", col.qty, tableTop + 7)
         .text("Price", col.price, tableTop + 7)
         .text("Total", col.total, tableTop + 7);
       tableTop += 25;
+      doc.fillColor("#000").font("Helvetica");
     };
 
-    drawHeader();
-    doc.fillColor("#000").font("Helvetica").fontSize(10);
+    drawTableHeader();
 
     for (const item of order.items) {
-      if (tableTop > doc.page.height - 180) {
+      if (tableTop > pageHeight - 250) {
         doc.addPage();
-        tableTop = 50;
         drawHeader();
+        tableTop = 80;
+        drawTableHeader();
       }
 
-      doc.rect(40, tableTop, contentWidth, 45).stroke("#e6e6e6");
+      doc.rect(40, tableTop, pageWidth - 80, 45).stroke("#e6e6e6");
 
-      // Product Image
       if (item.product?.images?.[0]) {
-        const imgPath = path.join(uploadFolder, item.product.images[0]);
-        if (fs.existsSync(imgPath)) {
-          doc.image(imgPath, col.image, tableTop + 5, { width: 35, height: 35 });
+        const img = path.join(uploadFolder, item.product.images[0]);
+        if (fs.existsSync(img)) {
+          doc.image(img, col.img, tableTop + 5, { width: 35, height: 35 });
         }
       }
 
-      // Product Details
-      doc.text(item.product?.name || "Product", col.name, tableTop + 15, { width: 210 });
+      doc.text(item.product.name, col.name, tableTop + 15, { width: 200 });
       doc.text(item.quantity, col.qty, tableTop + 15);
       doc.text(formatCurrency(item.price), col.price, tableTop + 15);
       doc.text(formatCurrency(item.price * item.quantity), col.total, tableTop + 15);
@@ -138,80 +150,93 @@ export const generateInvoice = async (req, res) => {
       tableTop += 45;
     }
 
-    /* ================= GRAND TOTAL (CENTERED) ================= */
+    /* ================= TAX SUMMARY ================= */
 
-    const totalBoxWidth = 260;
-    const totalX = centerX - totalBoxWidth / 2;
+    const boxX = centerX - 160;
 
-    doc.rect(totalX, tableTop + 20, totalBoxWidth, 50).stroke("#0f3c5f");
-    doc.font("Helvetica-Bold").fontSize(13)
-      .text("Grand Total", totalX + 20, tableTop + 35);
-    doc.text(formatCurrency(order.totalAmount), totalX + 150, tableTop + 35);
+    doc.rect(boxX, tableTop + 20, 320, 90).stroke("#0f3c5f");
 
-    /* ================= QR CODE (CENTERED) ================= */
+    doc.font("Helvetica-Bold").text("Subtotal", boxX + 20, tableTop + 35);
+    doc.text(formatCurrency(subtotal), boxX + 200, tableTop + 35);
 
-    const qrBuffer = await QRCode.toBuffer(String(order._id));
-    const qrSize = 110;
+    doc.text(`GST (${GST_RATE}%)`, boxX + 20, tableTop + 55);
+    doc.text(formatCurrency(gstAmount), boxX + 200, tableTop + 55);
 
-    doc.image(qrBuffer, centerX - qrSize / 2, tableTop + 90, { width: qrSize });
+    doc.text("Grand Total", boxX + 20, tableTop + 75);
+    doc.text(formatCurrency(grandTotal), boxX + 200, tableTop + 75);
 
-    doc.fontSize(9).fillColor("#555")
-      .text("Scan to view your Order", 0, tableTop + 210, { align: "center" });
+    /* ================= QR + LINK ================= */
 
-    /* ================= SOCIAL LINKS ================= */
+    const qr = await QRCode.toBuffer(orderUrl);
+    doc.image(qr, centerX - 45, tableTop + 130, { width: 90 });
 
-    const socialTop = tableTop + 240;
+    doc.fillColor("#0f3c5f").fontSize(9)
+      .text("View full order details",
+        centerX - 70,
+        tableTop + 230,
+        { link: orderUrl, underline: true });
 
-    doc.font("Helvetica-Bold").fontSize(10).fillColor("#000")
-      .text("Connect with us", 0, socialTop, { align: "center" });
+    /* ================= SIGNATURE ================= */
 
-    doc.font("Helvetica").fontSize(9).fillColor("#0f3c5f");
-
-    doc.text("Website", centerX - 90, socialTop + 20, {
-      link: "https://astronexus.com",
-      underline: true,
-    });
-
-    doc.text("Instagram", centerX - 20, socialTop + 20, {
-      link: "https://instagram.com/astronexus",
-      underline: true,
-    });
-
-    doc.text("Support", centerX + 70, socialTop + 20, {
-      link: "mailto:support@astronexus.com",
-      underline: true,
-    });
+    doc.fontSize(8).fillColor("#555")
+      .text(
+        `Digitally signed by ${COMPANY}\nGenerated on ${new Date().toLocaleString()}`,
+        40,
+        pageHeight - 70
+      );
 
     /* ================= FOOTER ================= */
 
-    doc.rect(0, doc.page.height - 20, pageWidth, 20).fill("#0f3c5f");
+    doc.rect(0, pageHeight - 20, pageWidth, 20).fill("#0f3c5f");
     doc.fillColor("#fff").fontSize(8)
-      .text("Thank you for shopping with Astronexus", 0, doc.page.height - 15, {
-        align: "center",
-      });
+      .text("Thank you for shopping with Astronexus", 0, pageHeight - 15, { align: "center" });
 
     doc.end();
 
-    stream.on("finish", () => {
+    /* ================= EMAIL ================= */
+
+    stream.on("finish", async () => {
+      await mailer.sendMail({
+        to: order.user.email,
+        subject: "Your Astronexus Invoice",
+        html: `
+          <p>Hello ${order.user.fullName},</p>
+          <p>Your invoice is attached.</p>
+          <p><a href="${orderUrl}">View Order Online</a></p>
+        `,
+        attachments: [
+          { filename: `invoice-${orderId}.pdf`, path: pdfPath },
+        ],
+      });
+
       res.json({
         success: true,
-        invoiceUrl: `/api/invoice/download/${orderId}`,
+        previewUrl: `/api/invoice/preview/${orderId}`,
+        downloadUrl: `/api/invoice/download/${orderId}`,
       });
     });
+
   } catch (err) {
-    console.error("INVOICE ERROR:", err);
-    res.status(500).json({
-      message: "Invoice generation failed",
-      error: err.message,
-    });
+    console.error(err);
+    res.status(500).json({ message: "Invoice failed" });
   }
+};
+
+/* ================= PREVIEW ================= */
+
+export const previewInvoice = (req, res) => {
+  const pdf = path.join(invoiceFolder, `${req.params.orderId}.pdf`);
+  if (!fs.existsSync(pdf)) return res.status(404).end();
+  res.setHeader("Content-Type", "application/pdf");
+  fs.createReadStream(pdf).pipe(res);
 };
 
 /* ================= DOWNLOAD ================= */
 
-export const downloadInvoice = async (req, res) => {
+export const downloadInvoice = (req, res) => {
   try {
     const { orderId } = req.params;
+
     const pdfPath = path.join(invoiceFolder, `${orderId}.pdf`);
 
     if (!fs.existsSync(pdfPath)) {
@@ -219,10 +244,15 @@ export const downloadInvoice = async (req, res) => {
     }
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=${orderId}.pdf`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=invoice-${orderId}.pdf`
+    );
+
     fs.createReadStream(pdfPath).pipe(res);
   } catch (err) {
     console.error("DOWNLOAD ERROR:", err);
-    res.status(500).json({ message: "Download failed" });
+    res.status(500).json({ message: "Invoice download failed" });
   }
 };
+
