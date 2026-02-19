@@ -7,6 +7,8 @@ import Order from "../../models/shop/Order.model.js";
 const invoiceFolder = path.join("invoices");
 if (!fs.existsSync(invoiceFolder)) fs.mkdirSync(invoiceFolder);
 
+const formatCurrency = (amount) => `₹${Number(amount).toFixed(2)}`;
+
 export const generateInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -15,156 +17,196 @@ export const generateInvoice = async (req, res) => {
     const order = await Order.findById(orderId)
       .populate("items.product", "name price images")
       .populate("user", "fullName email")
-      .populate("address")
-      .populate("paymentId");
+      .populate("address");
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const pdfPath = path.join(invoiceFolder, `${orderId}.pdf`);
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const doc = new PDFDocument({ size: "A4", margin: 40 });
     doc.pipe(fs.createWriteStream(pdfPath));
 
-    // ================= TOP BLUE BORDER =================
-    doc.rect(0, 0, doc.page.width, 10).fill("#1f4e79");
+    const pageWidth = doc.page.width;
+    const contentWidth = pageWidth - 80;
 
-    // ================= LOGO =================
-    const logoPath = path.join("uploads", "008e7d7f-ebd7-48a3-bd94-beb0b9da9c67.png");
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 50, 20, { width: 100 });
-    }
+    /* ================= HEADER ================= */
 
-    // ================= HEADER =================
+    doc.rect(0, 0, pageWidth, 8).fill("#0f3c5f");
+
     doc
-      .fillColor("#1f4e79")
+      .fillColor("#0f3c5f")
       .font("Helvetica-Bold")
-      .fontSize(20)
-      .text("ASTRONEXUS INVOICE", 0, 30, { align: "center" });
+      .fontSize(22)
+      .text("ASTRONEXUS", 40, 30);
 
-    // ================= ORDER INFO =================
-    const orderInfoTop = 100;
+    doc
+      .fontSize(10)
+      .fillColor("#555")
+      .text("Premium Astrology & Digital Products", 40, 55);
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .fillColor("#000")
+      .text("INVOICE", 0, 40, { align: "right" });
+
+    /* ================= ORDER META BOX ================= */
+
+    const metaTop = 90;
+
+    doc
+      .rect(40, metaTop, contentWidth, 90)
+      .stroke("#dcdcdc");
+
     doc.fontSize(10).fillColor("#333");
 
-    // Seller Info
-    doc.font("Helvetica-Bold").text("From:", 50, orderInfoTop);
-    doc.font("Helvetica").text("Astronexus Web", 50, orderInfoTop + 15);
-    doc.text("Email: support@astronexus.com", 50, orderInfoTop + 30);
+    // Seller
+    doc.font("Helvetica-Bold").text("From:", 50, metaTop + 10);
+    doc.font("Helvetica").text("Astronexus Web Pvt Ltd", 50, metaTop + 25);
+    doc.text("support@astronexus.com", 50, metaTop + 40);
 
-    // Customer Info
-    doc.font("Helvetica-Bold").text("To:", 320, orderInfoTop);
-    doc.font("Helvetica").text(order.user.fullName || "N/A", 320, orderInfoTop + 15);
-    doc.text(order.user.email || "N/A", 320, orderInfoTop + 30);
+    // Customer
+    doc.font("Helvetica-Bold").text("Bill To:", 300, metaTop + 10);
+    doc.font("Helvetica").text(order.user?.fullName || "N/A", 300, metaTop + 25);
+    doc.text(order.user?.email || "N/A", 300, metaTop + 40);
+
     if (order.address) {
-      doc.text(
-        `${order.address.line1}, ${order.address.city}, ${order.address.state}, ${order.address.zip}`,
-        320,
-        orderInfoTop + 45
-      );
+      const addressText = [
+        order.address.line1,
+        order.address.line2,
+        `${order.address.city}, ${order.address.state}`,
+        order.address.zip,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      doc.text(addressText, 300, metaTop + 55);
     }
 
     // Invoice Details
-    doc.font("Helvetica-Bold").text(`Invoice ID:`, 50, orderInfoTop + 75);
-    doc.font("Helvetica").text(order._id, 120, orderInfoTop + 75);
-    doc.font("Helvetica-Bold").text(`Date:`, 300, orderInfoTop + 75);
-    doc.font("Helvetica").text(new Date().toLocaleDateString(), 340, orderInfoTop + 75);
-    doc.font("Helvetica-Bold").text(`Status:`, 450, orderInfoTop + 75);
-    doc.font("Helvetica").text(order.status, 490, orderInfoTop + 75);
+    doc.font("Helvetica-Bold").text("Invoice ID:", 50, metaTop + 65);
+    doc.font("Helvetica").text(order._id, 120, metaTop + 65);
 
-    // ================= PRODUCTS TABLE =================
-    const tableTop = orderInfoTop + 120;
-    const rowHeight = 40;
-    const tableLeft = 50;
-    const tableWidth = 500;
+    doc.font("Helvetica-Bold").text("Date:", 50, metaTop + 80);
+    doc.font("Helvetica").text(new Date().toLocaleDateString(), 90, metaTop + 80);
 
-    // Table Header
-    doc.rect(tableLeft, tableTop, tableWidth, rowHeight).fill("#1f4e79");
-    doc.fillColor("#fff").font("Helvetica-Bold").fontSize(10);
-    const headers = ["Product", "Qty", "Price", "Total"];
-    const headerX = [tableLeft + 10, tableLeft + 250, tableLeft + 320, tableLeft + 400];
-    headers.forEach((header, i) =>
-      doc.text(header, headerX[i], tableTop + 12, { width: 100, align: "center" })
-    );
+    doc.font("Helvetica-Bold").text("Status:", 300, metaTop + 80);
+    doc.font("Helvetica").text(order.status, 350, metaTop + 80);
 
-    let y = tableTop + rowHeight;
-    doc.font("Helvetica").fontSize(10).fillColor("#333");
+    /* ================= TABLE ================= */
 
-    for (let i = 0; i < order.items.length; i++) {
-      const item = order.items[i];
+    let tableTop = metaTop + 120;
+    const columnPositions = {
+      product: 50,
+      qty: 330,
+      price: 380,
+      total: 450,
+    };
 
-      // Alternating row color
-      if (i % 2 === 0) {
-        doc.rect(tableLeft, y, tableWidth, rowHeight).fill("#f7f7f7");
-        doc.fillColor("#333");
+    const drawTableHeader = () => {
+      doc
+        .rect(40, tableTop, contentWidth, 25)
+        .fill("#0f3c5f");
+
+      doc
+        .fillColor("#fff")
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text("Product", columnPositions.product, tableTop + 7)
+        .text("Qty", columnPositions.qty, tableTop + 7)
+        .text("Price", columnPositions.price, tableTop + 7)
+        .text("Total", columnPositions.total, tableTop + 7);
+
+      tableTop += 25;
+    };
+
+    drawTableHeader();
+    doc.font("Helvetica").fontSize(10).fillColor("#000");
+
+    order.items.forEach((item, index) => {
+      if (tableTop > doc.page.height - 100) {
+        doc.addPage();
+        tableTop = 50;
+        drawTableHeader();
       }
 
-      // Product image
-      if (item.product.images && item.product.images[0]) {
+      const rowHeight = 40;
+
+      doc.rect(40, tableTop, contentWidth, rowHeight).stroke("#e6e6e6");
+
+      // Image
+      if (item.product?.images?.[0]) {
         const imgPath = path.join("uploads", item.product.images[0]);
         if (fs.existsSync(imgPath)) {
-          doc.image(imgPath, tableLeft + 10, y + 5, { width: 30, height: 30 });
+          doc.image(imgPath, 45, tableTop + 5, { width: 30, height: 30 });
         }
       }
 
-      doc.text(item.product.name, tableLeft + 50, y + 12, { width: 150 });
-      doc.text(item.quantity, tableLeft + 250, y + 12, { width: 50, align: "center" });
-      doc.text(`$${item.price}`, tableLeft + 320, y + 12, { width: 60, align: "center" });
-      doc.text(`$${item.price * item.quantity}`, tableLeft + 400, y + 12, { width: 60, align: "center" });
+      doc.text(item.product?.name || "Product", 80, tableTop + 12, {
+        width: 230,
+      });
 
-      y += rowHeight;
-    }
+      doc.text(item.quantity, columnPositions.qty, tableTop + 12);
+      doc.text(formatCurrency(item.price), columnPositions.price, tableTop + 12);
+      doc.text(
+        formatCurrency(item.price * item.quantity),
+        columnPositions.total,
+        tableTop + 12
+      );
 
-    // Total Row
-    doc.rect(tableLeft, y, tableWidth, rowHeight).fill("#1f4e79");
-    doc.fillColor("#fff").font("Helvetica-Bold").text(
-      `Total: $${order.totalAmount}`,
-      tableLeft + 300,
-      y + 12,
-      { width: 100, align: "center" }
-    );
-
-    // ================= QR CODE + Order ID =================
-    const orderUrl = `https://astro-nexus-new-6.onrender.com/user/orders/${order._id}`;
-    const qrDataUrl = await QRCode.toDataURL(orderUrl);
-    const qrBuffer = Buffer.from(qrDataUrl.replace(/^data:image\/png;base64,/, ""), "base64");
-
-    doc.image(qrBuffer, 220, y + 60, { fit: [100, 100], align: "center" });
-    doc.fontSize(10).fillColor("#333").text(
-      `Scan or use Order ID: ${order._id}`,
-      50,
-      y + 165,
-      { width: 500, align: "center" }
-    );
-
-    // ================= SOCIAL BUTTONS =================
-    const socialY = y + 200;
-    const socialLinks = [
-      { name: "Facebook", url: "https://facebook.com/astronexus" },
-      { name: "Instagram", url: "https://instagram.com/astronexus" },
-      { name: "Twitter", url: "https://twitter.com/astronexus" },
-    ];
-    let socialX = 150;
-    socialLinks.forEach((social) => {
-      doc
-        .fillColor("#1f4e79")
-        .rect(socialX, socialY, 60, 20)
-        .fill("#1f4e79")
-        .fillColor("#fff")
-        .text(social.name, socialX, socialY + 5, { width: 60, align: "center", link: social.url });
-      socialX += 80;
+      tableTop += rowHeight;
     });
 
-    // ================= BOTTOM BLUE BORDER =================
-    doc.rect(0, doc.page.height - 10, doc.page.width, 10).fill("#1f4e79");
+    /* ================= TOTAL BOX ================= */
+
+    doc
+      .rect(300, tableTop + 10, 240, 50)
+      .stroke("#0f3c5f");
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text("Grand Total", 310, tableTop + 25);
+
+    doc
+      .font("Helvetica-Bold")
+      .text(formatCurrency(order.totalAmount), 430, tableTop + 25);
+
+    /* ================= QR SECTION ================= */
+
+    const qrBuffer = await QRCode.toBuffer(order._id); // only order ID
+
+    doc.image(qrBuffer, 50, tableTop + 80, { width: 90 });
+
+    doc
+      .fontSize(9)
+      .fillColor("#555")
+      .text("Scan to view Order ID", 50, tableTop + 175);
+
+    /* ================= FOOTER ================= */
+
+    doc
+      .rect(0, doc.page.height - 20, pageWidth, 20)
+      .fill("#0f3c5f");
+
+    doc
+      .fillColor("#fff")
+      .fontSize(8)
+      .text(
+        "Thank you for shopping with Astronexus",
+        0,
+        doc.page.height - 15,
+        { align: "center" }
+      );
 
     doc.end();
 
     res.json({
       success: true,
-      message: "Invoice generated",
       invoiceUrl: `/api/invoice/download/${order._id}`,
     });
   } catch (err) {
-    console.error("GENERATE INVOICE ERROR:", err);
-    res.status(500).json({ message: "Failed to generate invoice" });
+    console.error(err);
+    res.status(500).json({ message: "Invoice generation failed" });
   }
 };
 
@@ -173,13 +215,14 @@ export const downloadInvoice = async (req, res) => {
     const { orderId } = req.params;
     const pdfPath = path.join(invoiceFolder, `${orderId}.pdf`);
 
-    if (!fs.existsSync(pdfPath)) return res.status(404).json({ message: "Invoice not found" });
+    if (!fs.existsSync(pdfPath))
+      return res.status(404).json({ message: "Invoice not found" });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename=${orderId}.pdf`);
+
     fs.createReadStream(pdfPath).pipe(res);
   } catch (err) {
-    console.error("DOWNLOAD INVOICE ERROR:", err);
-    res.status(500).json({ message: "Failed to download invoice" });
+    res.status(500).json({ message: "Download failed" });
   }
 };
