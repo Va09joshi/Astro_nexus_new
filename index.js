@@ -33,6 +33,8 @@ import adminUserRoutes from "./routes/admin/admin.user.routes.js";
 import feedbackRoutes from "./routes/feedback/feedback.js";
 import chatbotRoutes from "./routes/chatbot/chatbot.routes.js"
 import adminAstroRoutes from "./routes/admin/adminAstrologyRoutes.js";
+import invoiceRoutes from "./routes/invoice/invoiceRoutes.js";
+
 
 
 // ==================================================
@@ -73,6 +75,9 @@ app.use("/charts", express.static(path.join(__dirname, "charts")));
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute); // Birth chart generation + DB save
 app.use("/api/chatbot", chatbotRoutes);
+
+// ================= INVOICE ROUTES =================
+app.use("/api/invoice", invoiceRoutes);
 
 
 app.use("/api/v1/compatibility", compatibilityRoute);
