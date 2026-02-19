@@ -7,23 +7,15 @@ import Order from "../../models/shop/Order.model.js";
 import { fileURLToPath } from "url";
 
 /* ================= CONFIG ================= */
-
 const GST_RATE = 18;
 const COMPANY = "Astronexus Web Pvt Ltd";
 const SUPPORT_EMAIL = "support@astronexus.com";
 const WEBSITE = "https://astronexus.com";
 
-const SOCIALS = [
-  { label: "Website", url: WEBSITE },
-  { label: "Instagram", url: "https://www.instagram.com/astronexusind" },
-  { label: "Support", url: `mailto:${SUPPORT_EMAIL}` },
-];
-
 const getOrderUrl = (id) => `${WEBSITE}/orders/${id}`;
 const formatCurrency = (n) => `₹${Number(n).toFixed(2)}`;
 
 /* ================= PATH ================= */
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const invoiceDir = path.join(__dirname, "../../invoices");
@@ -31,7 +23,6 @@ const invoiceDir = path.join(__dirname, "../../invoices");
 if (!fs.existsSync(invoiceDir)) fs.mkdirSync(invoiceDir, { recursive: true });
 
 /* ================= EMAIL ================= */
-
 const mailer = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
@@ -43,7 +34,6 @@ const mailer = nodemailer.createTransport({
 });
 
 /* ================= PDF BUILDER ================= */
-
 const buildInvoicePdf = async (doc, order) => {
   const orderUrl = getOrderUrl(order._id);
 
@@ -145,35 +135,59 @@ const buildInvoicePdf = async (doc, order) => {
     .text("Thank you for shopping with Astronexus", 0, pageHeight - 15, { align: "center" });
 };
 
-/* ================= STREAM HANDLER ================= */
-
-const streamInvoice = async (req, res, disposition) => {
-  const order = await Order.findById(req.params.orderId)
+/* ================= SAVE PDF ================= */
+export const saveInvoicePdf = async (orderId) => {
+  const order = await Order.findById(orderId)
     .populate("items.product", "name price")
     .populate("user", "fullName email")
     .populate("address");
 
-  if (!order) return res.status(404).json({ message: "Order not found" });
+  if (!order) throw new Error("Order not found");
 
+  const filePath = path.join(invoiceDir, `invoice_${orderId}.pdf`);
   const doc = new PDFDocument({ size: "A4", margin: 40 });
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", disposition);
+  doc.pipe(fs.createWriteStream(filePath));
 
-  doc.pipe(res);
   await buildInvoicePdf(doc, order);
   doc.end();
+
+  return filePath;
 };
 
-/* ================= ROUTES ================= */
+/* ================= EXPORTS FOR ROUTES ================= */
 
-export const previewInvoice = (req, res) =>
-  streamInvoice(req, res, "inline; filename=invoice.pdf");
-
-export const downloadInvoice = (req, res) =>
-  streamInvoice(req, res, "attachment; filename=invoice.pdf");
-
+// Sends a JSON response with the generated invoice path
 export const generateInvoice = async (req, res) => {
-  // just trigger email
-  await streamInvoice(req, fs.createWriteStream("/dev/null"), "");
-  res.json({ success: true });
+  try {
+    const filePath = await saveInvoicePdf(req.params.orderId);
+    res.status(200).json({ message: "Invoice generated successfully", path: filePath });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Preview invoice in browser
+export const previewInvoice = async (req, res) => {
+  try {
+    const filePath = await saveInvoicePdf(req.params.orderId);
+    const stream = fs.createReadStream(filePath);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
+    stream.pipe(res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Download invoice as PDF
+export const downloadInvoice = async (req, res) => {
+  try {
+    const filePath = await saveInvoicePdf(req.params.orderId);
+    res.download(filePath, `invoice_${req.params.orderId}.pdf`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 };
