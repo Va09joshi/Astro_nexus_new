@@ -19,6 +19,8 @@ import * as paymentController from "../../controllers/users/payment.controller.j
 import * as addressController from "../../controllers/users/address.controller.js";
 import { verifyFirebaseOtp } from "../../controllers/users/firebase_auth.js";
 import uploadProfile from "../../middlewares/upload.js";
+import * as wishlistController from "../../controllers/users/wishlistController.js";
+
 
 
 
@@ -51,6 +53,15 @@ router.get("/cart", authenticateToken, cartController.getCart);
 router.post("/cart/add", authenticateToken, cartController.addToCart);
 router.put("/cart/update", authenticateToken, cartController.updateCartItem);
 router.delete("/cart/remove/:productId", authenticateToken, cartController.removeItem);
+
+// Add item(s) to wishlist or overwrite existing
+router.post("/wishlist", authenticateToken, wishlistController.addWishlist);
+
+// Get wishlist for logged-in user
+router.get("/wishlist", authenticateToken, wishlistController.getWishlist);
+
+// Remove a product from wishlist
+router.delete("/wishlist/remove", authenticateToken, wishlistController.removeProduct);
 
 // ================== ORDER ROUTES ==================
 router.post("/orders", authenticateToken, orderController.placeOrder);

@@ -34,6 +34,8 @@ import feedbackRoutes from "./routes/feedback/feedback.js";
 import chatbotRoutes from "./routes/chatbot/chatbot.routes.js"
 import adminAstroRoutes from "./routes/admin/adminAstrologyRoutes.js";
 import invoiceRoutes from "./routes/invoice/invoiceRoutes.js";
+import discountRoutes from "./routes/admin/discountRoutes.js";
+
 
 
 
@@ -94,6 +96,9 @@ app.use("/api/admin/categories", adminCategoryRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/tarot", tarotRoutes);
 app.use("/api/admin/astrology", adminAstroRoutes);
+
+// Mount discount routes under /discount
+app.use("/api/discount", discountRoutes);
 
 
 // ================= HEALTH CHECK =================
