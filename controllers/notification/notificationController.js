@@ -1,11 +1,18 @@
-// controllers/users/notificationController.js
 import Notification from "../../models/notification/Notification.js";
 
-// Get all notifications for a user
+// Get all notifications
 export const getNotifications = async (req, res) => {
-  const userId = req.user._id;
   try {
-    const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
+    let notifications;
+
+    // If admin, fetch all notifications
+    if (req.user.role === "admin") {
+      notifications = await Notification.find().sort({ createdAt: -1 });
+    } else {
+      // Regular user, fetch only their own notifications
+      notifications = await Notification.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    }
+
     res.json(notifications);
   } catch (err) {
     res.status(500).json({ error: err.message });
