@@ -59,3 +59,35 @@ export const deleteDiscount = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+// Apply discount to a given amount
+export const applyDiscount = async (req, res) => {
+  const { code, amount } = req.body; // amount: total order/cart amount
+  try {
+    // Find active discount by code
+    const discount = await Discount.findOne({ code, active: true });
+    if (!discount) {
+      return res.status(404).json({ error: "Discount not found" });
+    }
+
+    // Check expiry
+    const now = new Date();
+    if (discount.expiry < now) {
+      return res.status(400).json({ error: "Discount code has expired" });
+    }
+
+    // Calculate discounted amount
+    const discountAmount = (amount * discount.percentage) / 100;
+    const finalAmount = amount - discountAmount;
+
+    res.json({
+      originalAmount: amount,
+      discountAmount,
+      finalAmount,
+      discountCode: discount.code,
+      discountPercentage: discount.percentage
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

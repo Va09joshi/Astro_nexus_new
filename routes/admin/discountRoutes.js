@@ -12,4 +12,6 @@ router.get("/:code", discountController.getDiscountByCode);
 router.put("/:discountId", authenticateToken, authorizeAdmin, discountController.updateDiscount);
 router.delete("/:discountId", authenticateToken, authorizeAdmin, discountController.deleteDiscount);
 
+router.post("/apply", discountController.applyDiscount);
+
 export default router;

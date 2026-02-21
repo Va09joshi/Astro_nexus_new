@@ -36,6 +36,11 @@ import adminAstroRoutes from "./routes/admin/adminAstrologyRoutes.js";
 import invoiceRoutes from "./routes/invoice/invoiceRoutes.js";
 import discountRoutes from "./routes/admin/discountRoutes.js";
 
+import shippingRoutes from "./routes/shipping/shipping.js";
+import couponRoutes from "./routes/admin/coupons.js";
+import notificationRoutes from "./routes/notification/notificationRoutes.js";
+
+
 
 
 
@@ -99,6 +104,15 @@ app.use("/api/admin/astrology", adminAstroRoutes);
 
 // Mount discount routes under /discount
 app.use("/api/discount", discountRoutes);
+
+
+app.use("/shipping", shippingRoutes);
+
+// Coupons
+app.use("/coupon", couponRoutes);
+
+// Notifications
+app.use("/notifications", notificationRoutes);
 
 
 // ================= HEALTH CHECK =================
