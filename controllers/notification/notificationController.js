@@ -1,15 +1,19 @@
+// controllers/notificationController.js
 import Notification from "../../models/notification/Notification.js";
+import User from "../../models/user/user.js"; // make sure path is correct
 
-// Get all notifications
+/**
+ * Get all notifications
+ * - Admin: all notifications
+ * - User: only their notifications
+ */
 export const getNotifications = async (req, res) => {
   try {
     let notifications;
 
-    // If admin, fetch all notifications
     if (req.user.role === "admin") {
       notifications = await Notification.find().sort({ createdAt: -1 });
     } else {
-      // Regular user, fetch only their own notifications
       notifications = await Notification.find({ userId: req.user._id }).sort({ createdAt: -1 });
     }
 
@@ -19,7 +23,9 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-// Mark notification as read
+/**
+ * Mark a notification as read
+ */
 export const markAsRead = async (req, res) => {
   const { notificationId } = req.params;
   try {
@@ -28,20 +34,54 @@ export const markAsRead = async (req, res) => {
       { read: true },
       { new: true }
     );
+    if (!notification) return res.status(404).json({ message: "Notification not found" });
     res.json(notification);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Create system notification (Admin)
+/**
+ * Create a notification (Admin only)
+ * Supports sending to:
+ * - A specific user (userId)
+ * - All users (broadcast: true)
+ */
 export const createNotification = async (req, res) => {
-  const { userId, type, title, message } = req.body;
+  const { userId, type, title, message, broadcast } = req.body;
+
   try {
-    const notification = new Notification({ userId, type, title, message });
+    if (!title || !message) {
+      return res.status(400).json({ message: "Title and message are required" });
+    }
+
+    // Broadcast to all users
+    if (broadcast) {
+      const users = await User.find({}, "_id");
+      const notifications = users.map(u => ({
+        userId: u._id,
+        type: type || "system",
+        title,
+        message,
+      }));
+      await Notification.insertMany(notifications);
+      return res.status(201).json({ message: `Notification sent to ${users.length} users` });
+    }
+
+    // Single user notification
+    if (!userId) return res.status(400).json({ message: "User ID required for single notification" });
+
+    const notification = new Notification({
+      userId,
+      type: type || "system",
+      title,
+      message,
+    });
+
     await notification.save();
     res.status(201).json(notification);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 };
