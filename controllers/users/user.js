@@ -289,17 +289,15 @@ export const uploadProfileImage = [
         return res.status(400).json({ error: "No image uploaded" });
       }
 
-      const user = await User.findById(req.userId);
+      const user = await User.findById(req.user.id); // ✅ use req.user.id
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Delete old image
       if (user.profileImage?.publicId) {
         await cloudinary.uploader.destroy(user.profileImage.publicId);
       }
 
-      // ✅ Cloudinary-safe data
       user.profileImage = {
         url: req.file.secure_url,
         publicId: req.file.filename,
@@ -307,20 +305,16 @@ export const uploadProfileImage = [
 
       await user.save();
 
-      res.status(200).json({
+      res.json({
         success: true,
         profileImage: user.profileImage,
       });
     } catch (err) {
       console.error(err);
-      res.status(500).json({
-        success: false,
-        error: "Image upload failed",
-      });
+      res.status(500).json({ error: "Image upload failed" });
     }
   },
 ];
-
 
 /* ======================================================
    USER LOGOUT
