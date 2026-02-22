@@ -1,16 +1,10 @@
 // controllers/wishlistController.js
 const Wishlist = require('../../models/shop/Wishlist.js');
 
-// Add or update wishlist
+// Add new wishlist or update existing
 exports.addWishlist = async (req, res) => {
+  const { userId, products } = req.body;
   try {
-    const userId = req.user._id; // get userId from token
-    const { products } = req.body;
-
-    if (!products || !Array.isArray(products)) {
-      return res.status(400).json({ error: 'Products array is required' });
-    }
-
     let wishlist = await Wishlist.findOne({ userId });
     if (wishlist) {
       wishlist.products = products; // overwrite products
@@ -19,32 +13,37 @@ exports.addWishlist = async (req, res) => {
       wishlist = new Wishlist({ userId, products });
       await wishlist.save();
     }
-
     res.json(wishlist);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// Get wishlist for logged-in user
+// Get wishlist for the authenticated user
 exports.getWishlist = async (req, res) => {
   try {
-    const userId = req.user._id; // get userId from token
+    // Ensure req.user is set by your authenticateToken middleware
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Fetch wishlist for this user
     const wishlist = await Wishlist.findOne({ userId });
-    res.json(wishlist || { products: [] });
+
+    // Return wishlist or empty array if not found
+    return res.status(200).json(wishlist || { products: [] });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error('Error fetching wishlist:', err);
+    return res.status(500).json({ error: 'Failed to fetch wishlist', details: err.message });
   }
 };
 
+
 // Remove a product from wishlist
 exports.removeProduct = async (req, res) => {
+  const { userId, productId } = req.body;
   try {
-    const userId = req.user._id; // get userId from token
-    const { productId } = req.body;
-
-    if (!productId) return res.status(400).json({ error: 'productId is required' });
-
     const wishlist = await Wishlist.findOne({ userId });
     if (wishlist) {
       wishlist.products = wishlist.products.filter(p => p !== productId);
