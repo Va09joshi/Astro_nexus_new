@@ -280,41 +280,37 @@ export async function handleRefreshToken(req, res) {
 
 // ========================= upload //========================
 
-export const uploadProfileImage = [
-  authenticateToken,
-  upload.single("profileImg"),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No image uploaded" });
-      }
-
-      const user = await User.findById(req.user.id); // ✅ use req.user.id
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      if (user.profileImage?.publicId) {
-        await cloudinary.uploader.destroy(user.profileImage.publicId);
-      }
-
-      user.profileImage = {
-        url: req.file.secure_url,
-        publicId: req.file.filename,
-      };
-
-      await user.save();
-
-      res.json({
-        success: true,
-        profileImage: user.profileImage,
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Image upload failed" });
+export const uploadProfileImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No image uploaded" });
     }
-  },
-];
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.profileImage?.publicId) {
+      await cloudinary.uploader.destroy(user.profileImage.publicId);
+    }
+
+    user.profileImage = {
+      url: req.file.secure_url,
+      publicId: req.file.filename,
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      profileImage: user.profileImage,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Image upload failed" });
+  }
+};
 
 /* ======================================================
    USER LOGOUT

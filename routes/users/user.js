@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticateToken , authorizeAdmin} from "../../middlewares/auth.js";
+import upload from "../../middlewares/upload.js";
 
 import {
   handleBasicSignup,
@@ -33,7 +34,12 @@ router.post("/login", handleUserLogin);                   // login by email
 router.post("/login/phone", handleUserLoginWithPhone);   // login by phone
 router.post("/logout", authenticateToken, handleUserLogout);
 
-router.post("/profile-image", authenticateToken, uploadProfile.single("image"), uploadProfileImage);
+router.post(
+  "/profile-image",
+  authenticateToken,
+  upload.single("profileImg"), // ✅ MUST MATCH POSTMAN
+  uploadProfileImage
+);
 router.get("/me", authenticateToken, getMyProfile);
 
 
