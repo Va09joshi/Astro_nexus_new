@@ -112,7 +112,7 @@ app.use("/shipping", shippingRoutes);
 app.use("/coupon", couponRoutes);
 
 // Notifications
-app.use("api/notifications", notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 
 // ================= HEALTH CHECK =================
