@@ -228,7 +228,9 @@ export async function getMyProfile(req, res) {
       "name email phone profileImage"
     );
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
     res.json({
       success: true,
@@ -236,16 +238,19 @@ export async function getMyProfile(req, res) {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        profileImage: user.profileImage || null
-      }
+        profileImage: user.profileImage
+          ? {
+              url: user.profileImage.url,       // ✅ ADD THIS
+              publicId: user.profileImage.publicId,
+            }
+          : null,
+      },
     });
   } catch (err) {
     console.error("Get profile error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 }
-
-
 /* ======================================================
    REFRESH TOKEN
 ====================================================== */
