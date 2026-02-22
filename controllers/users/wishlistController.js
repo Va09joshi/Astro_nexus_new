@@ -1,12 +1,11 @@
-// controllers/wishlistController.js
-const Wishlist = require('../../models/shop/Wishlist.js');
-const Product = require('../../models/shop/Product.model.js'); // Your Product model
-
+// controllers/users/wishlistController.js
+import Wishlist from '../../models/shop/Wishlist.js';
+import Product from '../../models/shop/Product.model.js'; // Your Product model
 
 // Add or update wishlist
-exports.addWishlist = async (req, res) => {
+export const addWishlist = async (req, res) => {
   try {
-    const userId = req.userId; // <-- use req.userId from middleware
+    const userId = req.userId; // <-- from authenticateToken middleware
     const { products } = req.body;
 
     if (!products || !Array.isArray(products)) {
@@ -29,21 +28,21 @@ exports.addWishlist = async (req, res) => {
   }
 };
 
-
 // Get wishlist with full product details
-exports.getWishlist = async (req, res) => {
+export const getWishlist = async (req, res) => {
   try {
-    const userId = req.userId; // from authenticateToken
+    const userId = req.userId;
     const wishlist = await Wishlist.findOne({ userId });
 
-    if (!wishlist || !wishlist.products.length) {
+    if (!wishlist || wishlist.products.length === 0) {
       return res.status(200).json({ products: [] });
     }
 
-    // Fetch full product info
     const products = await Product.find({
-      _id: { $in: wishlist.products }
-    }).select('name images price'); // only select the fields you want
+      _id: { $in: wishlist.products },
+      isActive: true,
+      isDeleted: false
+    }).select('name images price astrologyType stock deliveryType');
 
     res.status(200).json({ products });
   } catch (err) {
@@ -53,9 +52,9 @@ exports.getWishlist = async (req, res) => {
 };
 
 // Remove a product from wishlist
-exports.removeProduct = async (req, res) => {
+export const removeProduct = async (req, res) => {
   try {
-    const userId = req.userId; // <-- use req.userId from middleware
+    const userId = req.userId;
     const { productId } = req.body;
 
     if (!productId) {
