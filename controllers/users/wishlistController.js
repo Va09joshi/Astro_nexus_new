@@ -21,14 +21,15 @@ exports.addWishlist = async (req, res) => {
 
 // Get wishlist for a user
 exports.getWishlist = async (req, res) => {
-  const { userId } = req.params;
   try {
+    const userId = req.user._id; // Get userId from token (authenticateToken middleware)
     const wishlist = await Wishlist.findOne({ userId });
     res.json(wishlist || { products: [] });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
+
 
 // Remove a product from wishlist
 exports.removeProduct = async (req, res) => {
