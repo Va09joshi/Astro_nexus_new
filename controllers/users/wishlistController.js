@@ -1,5 +1,7 @@
 // controllers/wishlistController.js
 const Wishlist = require('../../models/shop/Wishlist.js');
+const Product = require('../../models/shop/Product.model.js'); // Your Product model
+
 
 // Add or update wishlist
 exports.addWishlist = async (req, res) => {
@@ -28,19 +30,27 @@ exports.addWishlist = async (req, res) => {
 };
 
 
-// Get wishlist for the authenticated user
-// Get wishlist for a user
+// Get wishlist with full product details
 exports.getWishlist = async (req, res) => {
   try {
-    const userId = req.userId; // <-- use req.userId from middleware
+    const userId = req.userId; // from authenticateToken
     const wishlist = await Wishlist.findOne({ userId });
-    res.status(200).json(wishlist || { products: [] });
+
+    if (!wishlist || !wishlist.products.length) {
+      return res.status(200).json({ products: [] });
+    }
+
+    // Fetch full product info
+    const products = await Product.find({
+      _id: { $in: wishlist.products }
+    }).select('name images price'); // only select the fields you want
+
+    res.status(200).json({ products });
   } catch (err) {
     console.error("Get wishlist error:", err);
     res.status(400).json({ error: err.message });
   }
 };
-
 
 // Remove a product from wishlist
 exports.removeProduct = async (req, res) => {
