@@ -240,8 +240,8 @@ export async function getMyProfile(req, res) {
         phone: user.phone,
         profileImage: user.profileImage
           ? {
-              url: user.profileImage.url,       // ✅ ADD THIS
               publicId: user.profileImage.publicId,
+              url: user.profileImage.url, // ✅ full URL
             }
           : null,
       },
@@ -251,6 +251,7 @@ export async function getMyProfile(req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
+
 /* ======================================================
    REFRESH TOKEN
 ====================================================== */
