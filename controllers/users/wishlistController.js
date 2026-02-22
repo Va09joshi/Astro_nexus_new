@@ -1,10 +1,16 @@
 // controllers/wishlistController.js
 const Wishlist = require('../../models/shop/Wishlist.js');
 
-// Add new wishlist or update existing
+// Add or update wishlist
 exports.addWishlist = async (req, res) => {
-  const { userId, products } = req.body;
   try {
+    const userId = req.user._id; // get userId from token
+    const { products } = req.body;
+
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).json({ error: 'Products array is required' });
+    }
+
     let wishlist = await Wishlist.findOne({ userId });
     if (wishlist) {
       wishlist.products = products; // overwrite products
@@ -13,16 +19,17 @@ exports.addWishlist = async (req, res) => {
       wishlist = new Wishlist({ userId, products });
       await wishlist.save();
     }
+
     res.json(wishlist);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// Get wishlist for a user
+// Get wishlist for logged-in user
 exports.getWishlist = async (req, res) => {
   try {
-    const userId = req.user._id; // Get userId from token (authenticateToken middleware)
+    const userId = req.user._id; // get userId from token
     const wishlist = await Wishlist.findOne({ userId });
     res.json(wishlist || { products: [] });
   } catch (err) {
@@ -30,11 +37,14 @@ exports.getWishlist = async (req, res) => {
   }
 };
 
-
 // Remove a product from wishlist
 exports.removeProduct = async (req, res) => {
-  const { userId, productId } = req.body;
   try {
+    const userId = req.user._id; // get userId from token
+    const { productId } = req.body;
+
+    if (!productId) return res.status(400).json({ error: 'productId is required' });
+
     const wishlist = await Wishlist.findOne({ userId });
     if (wishlist) {
       wishlist.products = wishlist.products.filter(p => p !== productId);
