@@ -1,91 +1,129 @@
-// controllers/discountController.js
 import Discount from "../models/shop/Discount.js";
 
-// Create a new discount
+// ================= CREATE =================
 export const createDiscount = async (req, res) => {
-  const { code, percentage, expiry } = req.body;
   try {
-    const discount = new Discount({ code, percentage, expiry });
-    await discount.save();
+    const { code, percentage, expiry } = req.body;
+
+    if (!code || !percentage || !expiry) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if (percentage <= 0 || percentage > 100) {
+      return res.status(400).json({ error: "Invalid percentage" });
+    }
+
+    if (new Date(expiry) <= new Date()) {
+      return res.status(400).json({ error: "Expiry must be in the future" });
+    }
+
+    const discount = await Discount.create({
+      code: code.toUpperCase(),
+      percentage,
+      expiry,
+    });
+
     res.status(201).json(discount);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// Get all active discounts
+// ================= GET ALL =================
 export const getDiscounts = async (req, res) => {
   try {
-    const discounts = await Discount.find({ active: true });
+    const discounts = await Discount.find({
+      active: true,
+      expiry: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
     res.json(discounts);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// Get discount by code
+// ================= GET BY CODE =================
 export const getDiscountByCode = async (req, res) => {
-  const { code } = req.params;
   try {
-    const discount = await Discount.findOne({ code, active: true });
-    if (!discount) return res.status(404).json({ error: "Discount not found" });
+    const discount = await Discount.findOne({
+      code: req.params.code.toUpperCase(),
+      active: true,
+      expiry: { $gt: new Date() },
+    });
+
+    if (!discount) {
+      return res.status(404).json({ error: "Discount not found or expired" });
+    }
+
     res.json(discount);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// Update discount
+// ================= UPDATE =================
 export const updateDiscount = async (req, res) => {
-  const { discountId } = req.params;
-  const updates = req.body;
   try {
-    const discount = await Discount.findByIdAndUpdate(discountId, updates, { new: true });
-    if (!discount) return res.status(404).json({ error: "Discount not found" });
-    res.json(discount);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
+    const discount = await Discount.findByIdAndUpdate(
+      req.params.discountId,
+      req.body,
+      { new: true, runValidators: true }
+    );
 
-// Soft delete discount
-export const deleteDiscount = async (req, res) => {
-  const { discountId } = req.params;
-  try {
-    const discount = await Discount.findByIdAndUpdate(discountId, { active: false }, { new: true });
-    if (!discount) return res.status(404).json({ error: "Discount not found" });
-    res.json({ message: "Discount deactivated", discount });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
-
-// Apply discount to a given amount
-export const applyDiscount = async (req, res) => {
-  const { code, amount } = req.body; // amount: total order/cart amount
-  try {
-    // Find active discount by code
-    const discount = await Discount.findOne({ code, active: true });
     if (!discount) {
       return res.status(404).json({ error: "Discount not found" });
     }
 
-    // Check expiry
-    const now = new Date();
-    if (discount.expiry < now) {
-      return res.status(400).json({ error: "Discount code has expired" });
+    res.json(discount);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// ================= SOFT DELETE =================
+export const deleteDiscount = async (req, res) => {
+  try {
+    const discount = await Discount.findByIdAndUpdate(
+      req.params.discountId,
+      { active: false },
+      { new: true }
+    );
+
+    if (!discount) {
+      return res.status(404).json({ error: "Discount not found" });
     }
 
-    // Calculate discounted amount
+    res.json({ message: "Discount deactivated" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// ================= APPLY =================
+export const applyDiscount = async (req, res) => {
+  try {
+    const { code, amount } = req.body;
+
+    const discount = await Discount.findOne({
+      code: code.toUpperCase(),
+      active: true,
+      expiry: { $gt: new Date() },
+    });
+
+    if (!discount) {
+      return res.status(404).json({ error: "Invalid or expired discount" });
+    }
+
     const discountAmount = (amount * discount.percentage) / 100;
-    const finalAmount = amount - discountAmount;
+    const finalAmount = Math.max(amount - discountAmount, 0);
 
     res.json({
       originalAmount: amount,
       discountAmount,
       finalAmount,
-      discountCode: discount.code,
-      discountPercentage: discount.percentage
+      code: discount.code,
+      percentage: discount.percentage,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
