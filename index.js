@@ -76,8 +76,11 @@ app.use(cookieParser());
 
 // ================= STATIC FOLDER FOR CHART IMAGES =================
 // This makes saved birth chart images publicly accessible
-app.use("/charts", express.static(path.join(__dirname, "charts")));
 
+app.use(
+  "/charts",
+  express.static(path.join(__dirname, "controllers/charts"))
+);
 // ================= PUBLIC APIs =================
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute); // Birth chart generation + DB save
