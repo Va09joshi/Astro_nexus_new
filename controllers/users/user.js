@@ -3,8 +3,9 @@ import validator from "validator";
 import User from "../../models/user/user.js";
 import { createToken, createRefreshToken, verifyRefreshToken } from "../../service/auth.js";
 import cloudinary from "../../service/config/cloudinary.js";
-import upload from "../../middlewares/upload.js";
+import upload from "../../middlewares/upload.js";     
 import { authenticateToken } from "../../middlewares/auth.js";
+import BirthChart from "../../models/features/birthChartModel.js";
 
 
 /* ======================================================
