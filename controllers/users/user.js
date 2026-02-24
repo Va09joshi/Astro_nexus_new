@@ -77,29 +77,34 @@ export async function handleAstrologySignup(req, res) {
       dateOfBirth,
       timeOfBirth,
       placeOfBirth,
-      tempChartId
+      tempChartId // optional: temporary chart generated before signup
     } = req.body;
 
-    // Validation checks
-    if (!dateOfBirth || !timeOfBirth || !placeOfBirth)
+    // 1️⃣ Basic validations
+    if (!dateOfBirth || !timeOfBirth || !placeOfBirth) {
       return res.status(400).json({ error: "Astrology birth details are required" });
-    if (!validator.isMobilePhone(phone, "any"))
+    }
+    if (!validator.isMobilePhone(phone, "any")) {
       return res.status(400).json({ error: "Invalid phone number" });
-    if (email && !validator.isEmail(email))
+    }
+    if (email && !validator.isEmail(email)) {
       return res.status(400).json({ error: "Invalid email format" });
-    if (!password || password.length < 6)
+    }
+    if (!password || password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
-    if (password !== confirmPassword)
+    }
+    if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
+    }
 
-    // Check if user exists
+    // 2️⃣ Check if user already exists
     const existingUser = await User.findOne({ $or: [{ phone }, { email }] });
     if (existingUser) return res.status(400).json({ error: "User already exists" });
 
-    // Hash password
+    // 3️⃣ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // 4️⃣ Create user
     const user = await User.create({
       name,
       phone,
@@ -108,7 +113,7 @@ export async function handleAstrologySignup(req, res) {
       astrologyProfile: { dateOfBirth, timeOfBirth, placeOfBirth }
     });
 
-    // Link temporary birth chart
+    // 5️⃣ Link temporary birth chart (if provided)
     let birthChart = null;
     if (tempChartId) {
       try {
@@ -117,21 +122,23 @@ export async function handleAstrologySignup(req, res) {
           birthChart.userId = user._id;
           birthChart.isTemporary = false;
           await birthChart.save();
+        } else {
+          console.warn("Temporary chart not found for ID:", tempChartId);
         }
       } catch (err) {
         console.warn("Failed to link temporary chart:", err.message);
       }
     }
 
-    // Generate tokens
+    // 6️⃣ Generate JWT tokens
     const token = createToken(user);
     const refreshToken = createRefreshToken(user);
 
-    // Set cookies
+    // 7️⃣ Set cookies
     res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
 
-    // Return user + birth chart
+    // 8️⃣ Return response with user + birth chart
     res.status(201).json({
       success: true,
       message: "Astrology signup successful",
