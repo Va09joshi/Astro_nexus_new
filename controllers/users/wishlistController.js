@@ -47,7 +47,7 @@ export const getWishlist = async (req, res) => {
     const wishlist = await Wishlist.findOne({ userId: req.userId })
       .populate(
         'products',
-        'name images price astrologyType stock deliveryType'
+        'name images price' // include the fields you need in Flutter
       );
 
     if (!wishlist) {
