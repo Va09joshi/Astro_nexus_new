@@ -168,9 +168,14 @@ export async function handleAstrologySignup(req, res) {
 export async function handleUserLogin(req, res) {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: "Email and password are required" });
-    if (!validator.isEmail(email)) return res.status(400).json({ error: "Invalid email format" });
 
+    if (!email || !password)
+      return res.status(400).json({ error: "Email and password are required" });
+
+    if (!validator.isEmail(email))
+      return res.status(400).json({ error: "Invalid email format" });
+
+    // Fetch user including password & astrology profile
     const user = await User.findOne({ email }).select("+password +astrologyProfile");
     if (!user) return res.status(401).json({ error: "Invalid email or password" });
     if (user.isBlocked) return res.status(403).json({ error: "This account is blocked" });
@@ -178,14 +183,28 @@ export async function handleUserLogin(req, res) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) return res.status(401).json({ error: "Invalid email or password" });
 
+    // Update last login
     user.lastLoginAt = new Date();
     await user.save();
 
+    // Generate tokens
     const token = createToken(user);
     const refreshToken = createRefreshToken(user);
 
-    res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
+    // ⭐ Fetch all birth charts linked to this user
+    const charts = await BirthChart.find({ userId: user._id, isTemporary: false }).sort({ createdAt: -1 });
+
+    // Optional: Count charts
+    const chartsCount = charts.length;
 
     return res.json({
       success: true,
@@ -201,7 +220,14 @@ export async function handleUserLogin(req, res) {
         isBlocked: user.isBlocked,
         lastLoginAt: user.lastLoginAt,
         sessionId: user.sessionId,  // ⭐ added
-        astrologyProfile: user.astrologyProfile || null
+        astrologyProfile: user.astrologyProfile || null,
+        charts: charts.map(chart => ({
+          id: chart._id,
+          chartImage: chart.chartImage,
+          rashi: chart.rashi,
+          createdAt: chart.createdAt
+        })),
+        chartsCount
       }
     });
   } catch (error) {
@@ -216,9 +242,13 @@ export async function handleUserLogin(req, res) {
 export async function handleUserLoginWithPhone(req, res) {
   try {
     const { phone, password } = req.body;
-    if (!phone || !password) return res.status(400).json({ error: "Phone and password are required" });
-    if (!validator.isMobilePhone(phone, "any")) return res.status(400).json({ error: "Invalid phone number format" });
+    if (!phone || !password)
+      return res.status(400).json({ error: "Phone and password are required" });
 
+    if (!validator.isMobilePhone(phone, "any"))
+      return res.status(400).json({ error: "Invalid phone number format" });
+
+    // Fetch user including password & astrology profile
     const user = await User.findOne({ phone }).select("+password +astrologyProfile");
     if (!user) return res.status(401).json({ error: "Invalid phone or password" });
     if (user.isBlocked) return res.status(403).json({ error: "This account is blocked" });
@@ -226,14 +256,28 @@ export async function handleUserLoginWithPhone(req, res) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) return res.status(401).json({ error: "Invalid phone or password" });
 
+    // Update last login
     user.lastLoginAt = new Date();
     await user.save();
 
+    // Generate tokens
     const token = createToken(user);
     const refreshToken = createRefreshToken(user);
 
-    res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
+    // ⭐ Fetch all birth charts linked to this user
+    const charts = await BirthChart.find({ userId: user._id, isTemporary: false }).sort({ createdAt: -1 });
+
+    // Optional: Count charts
+    const chartsCount = charts.length;
 
     return res.json({
       success: true,
@@ -249,7 +293,14 @@ export async function handleUserLoginWithPhone(req, res) {
         isBlocked: user.isBlocked,
         lastLoginAt: user.lastLoginAt,
         sessionId: user.sessionId,  // ⭐ added
-        astrologyProfile: user.astrologyProfile || null
+        astrologyProfile: user.astrologyProfile || null,
+        charts: charts.map(chart => ({
+          id: chart._id,
+          chartImage: chart.chartImage,
+          rashi: chart.rashi,
+          createdAt: chart.createdAt
+        })),
+        chartsCount
       }
     });
   } catch (error) {
@@ -258,31 +309,48 @@ export async function handleUserLoginWithPhone(req, res) {
   }
 }
 
+
 /// ========================= get my profile =========================
 
 export async function getMyProfile(req, res) {
   try {
+    // Fetch user details
     const user = await User.findById(req.user.id).select(
-      "name email phone profileImage"
+      "name email phone profileImage astrologyProfile sessionId"
     );
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Fetch all linked birth charts (non-temporary)
+    const charts = await BirthChart.find({ userId: user._id, isTemporary: false }).sort({ createdAt: -1 });
+
+    const chartsCount = charts.length;
+
     res.json({
       success: true,
       user: {
+        id: user._id,
         name: user.name,
         email: user.email,
         phone: user.phone,
+        sessionId: user.sessionId,
         profileImage: user.profileImage
           ? {
               publicId: user.profileImage.publicId,
-              url: user.profileImage.url, // ✅ full URL
+              url: user.profileImage.url,
             }
           : null,
-      },
+        astrologyProfile: user.astrologyProfile || null,
+        charts: charts.map(chart => ({
+          id: chart._id,
+          chartImage: chart.chartImage,
+          rashi: chart.rashi,
+          createdAt: chart.createdAt
+        })),
+        chartsCount
+      }
     });
   } catch (err) {
     console.error("Get profile error:", err);
