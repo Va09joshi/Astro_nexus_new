@@ -120,12 +120,21 @@ export async function handleAstrologySignup(req, res) {
     });
 
     // 5️⃣ Link temporary birth chart if available
-    if (tempChartId) {
-      await BirthChart.findByIdAndUpdate(tempChartId, {
-        userId: user._id,
-        isTemporary: false
-      });
+if (tempChartId) {
+  try {
+    const chart = await BirthChart.findById(tempChartId);
+    if (chart) {
+      chart.userId = user._id;
+      chart.isTemporary = false;
+      await chart.save();
+    } else {
+      console.warn("Temporary chart ID not found:", tempChartId);
     }
+  } catch (err) {
+    console.error("Error linking temporary chart:", err.message);
+    // Do not throw, just warn
+  }
+}
 
     // 6️⃣ Generate JWT tokens
     const token = createToken(user);
