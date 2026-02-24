@@ -109,10 +109,10 @@ app.use("/api/admin/astrology", adminAstroRoutes);
 app.use("/api/discount", discountRoutes);
 
 
-app.use("/shipping", shippingRoutes);
+app.use("/api/shipping", shippingRoutes);
 
 // Coupons
-app.use("/coupon", couponRoutes);
+app.use("/api/coupon", couponRoutes);
 
 // Notifications
 app.use("/api/notifications", notificationRoutes);
