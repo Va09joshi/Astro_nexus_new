@@ -68,29 +68,49 @@ export async function handleBasicSignup(req, res) {
 ====================================================== */
 export async function handleAstrologySignup(req, res) {
   try {
-    const { name, phone, password, confirmPassword, email, dateOfBirth, timeOfBirth, placeOfBirth } = req.body;
+    const {
+      name,
+      phone,
+      password,
+      confirmPassword,
+      email,
+      dateOfBirth,
+      timeOfBirth,
+      placeOfBirth,
+      tempChartId // optional: temporary chart generated before signup
+    } = req.body;
 
+    // 1️⃣ Basic validations
     if (!dateOfBirth || !timeOfBirth || !placeOfBirth) {
       return res.status(400).json({ error: "Astrology birth details are required" });
     }
+
     if (!validator.isMobilePhone(phone, "any")) {
       return res.status(400).json({ error: "Invalid phone number" });
     }
+
     if (email && !validator.isEmail(email)) {
       return res.status(400).json({ error: "Invalid email format" });
     }
-    if (password.length < 6) {
+
+    if (!password || password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
+
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
+    // 2️⃣ Check if user already exists
     const existingUser = await User.findOne({ $or: [{ phone }, { email }] });
-    if (existingUser) return res.status(400).json({ error: "User already exists" });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
 
+    // 3️⃣ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 4️⃣ Create user
     const user = await User.create({
       name,
       phone,
@@ -99,12 +119,29 @@ export async function handleAstrologySignup(req, res) {
       astrologyProfile: { dateOfBirth, timeOfBirth, placeOfBirth }
     });
 
+    // 5️⃣ Link temporary birth chart if available
+    if (tempChartId) {
+      await BirthChart.findByIdAndUpdate(tempChartId, {
+        userId: user._id,
+        isTemporary: false
+      });
+    }
+
+    // 6️⃣ Generate JWT tokens
     const token = createToken(user);
     const refreshToken = createRefreshToken(user);
 
-    res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    // 7️⃣ Set cookies
+    res.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
 
+    // 8️⃣ Return response
     res.status(201).json({
       success: true,
       message: "Astrology signup successful",
@@ -113,7 +150,7 @@ export async function handleAstrologySignup(req, res) {
       user: {
         id: user._id,
         name: user.name,
-        sessionId: user.sessionId,   // ⭐ added
+        sessionId: user.sessionId,
         astrologyProfile: user.astrologyProfile
       }
     });
@@ -123,6 +160,7 @@ export async function handleAstrologySignup(req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
+
 
 /* ======================================================
    USER LOGIN (EMAIL)

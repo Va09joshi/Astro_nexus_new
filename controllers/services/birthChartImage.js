@@ -133,7 +133,7 @@ const generateChartImage = async (chartData) => {
 // Controller: Generate birth chart
 exports.generateBirthChart = async (req, res) => {
   try {
-    const body = req.body; // should include userId
+    const body = req.body; // may or may not include userId
 
     // Call Astro Nexus API
     const apiRes = await axios.post(
@@ -149,18 +149,19 @@ exports.generateBirthChart = async (req, res) => {
     // Extract rashi
     const rashi = chartData.rashi?.toLowerCase() || chartData.ascendant?.sign?.toLowerCase();
 
-    // Save to DB
+    // Save chart (temporary if no userId)
     const saved = await BirthChart.create({
-      userId: body.userId,
+      userId: body.userId || null,
       ...body,
       chartImage,
       chartData,
-      rashi
+      rashi,
+      isTemporary: !body.userId
     });
 
     res.status(201).json({
       success: true,
-      message: "Birth chart generated with full JSON + image",
+      message: "Birth chart generated",
       data: saved
     });
 
