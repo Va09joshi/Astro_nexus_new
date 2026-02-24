@@ -1,5 +1,4 @@
 import Wishlist from '../../models/shop/Wishlist.js';
-import Product from '../../models/shop/Product.model.js';
 
 /**
  * ADD PRODUCT TO WISHLIST
