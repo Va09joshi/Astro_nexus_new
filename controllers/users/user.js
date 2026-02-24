@@ -77,40 +77,29 @@ export async function handleAstrologySignup(req, res) {
       dateOfBirth,
       timeOfBirth,
       placeOfBirth,
-      tempChartId // optional: temporary chart generated before signup
+      tempChartId
     } = req.body;
 
-    // 1️⃣ Basic validations
-    if (!dateOfBirth || !timeOfBirth || !placeOfBirth) {
+    // Validation checks
+    if (!dateOfBirth || !timeOfBirth || !placeOfBirth)
       return res.status(400).json({ error: "Astrology birth details are required" });
-    }
-
-    if (!validator.isMobilePhone(phone, "any")) {
+    if (!validator.isMobilePhone(phone, "any"))
       return res.status(400).json({ error: "Invalid phone number" });
-    }
-
-    if (email && !validator.isEmail(email)) {
+    if (email && !validator.isEmail(email))
       return res.status(400).json({ error: "Invalid email format" });
-    }
-
-    if (!password || password.length < 6) {
+    if (!password || password.length < 6)
       return res.status(400).json({ error: "Password must be at least 6 characters" });
-    }
-
-    if (password !== confirmPassword) {
+    if (password !== confirmPassword)
       return res.status(400).json({ error: "Passwords do not match" });
-    }
 
-    // 2️⃣ Check if user already exists
+    // Check if user exists
     const existingUser = await User.findOne({ $or: [{ phone }, { email }] });
-    if (existingUser) {
-      return res.status(400).json({ error: "User already exists" });
-    }
+    if (existingUser) return res.status(400).json({ error: "User already exists" });
 
-    // 3️⃣ Hash password
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4️⃣ Create user
+    // Create user
     const user = await User.create({
       name,
       phone,
@@ -119,38 +108,30 @@ export async function handleAstrologySignup(req, res) {
       astrologyProfile: { dateOfBirth, timeOfBirth, placeOfBirth }
     });
 
-    // 5️⃣ Link temporary birth chart if available
-if (tempChartId) {
-  try {
-    const chart = await BirthChart.findById(tempChartId);
-    if (chart) {
-      chart.userId = user._id;
-      chart.isTemporary = false;
-      await chart.save();
-    } else {
-      console.warn("Temporary chart ID not found:", tempChartId);
+    // Link temporary birth chart
+    let birthChart = null;
+    if (tempChartId) {
+      try {
+        birthChart = await BirthChart.findById(tempChartId);
+        if (birthChart) {
+          birthChart.userId = user._id;
+          birthChart.isTemporary = false;
+          await birthChart.save();
+        }
+      } catch (err) {
+        console.warn("Failed to link temporary chart:", err.message);
+      }
     }
-  } catch (err) {
-    console.error("Error linking temporary chart:", err.message);
-    // Do not throw, just warn
-  }
-}
 
-    // 6️⃣ Generate JWT tokens
+    // Generate tokens
     const token = createToken(user);
     const refreshToken = createRefreshToken(user);
 
-    // 7️⃣ Set cookies
-    res.cookie("token", token, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000
-    });
+    // Set cookies
+    res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
 
-    // 8️⃣ Return response
+    // Return user + birth chart
     res.status(201).json({
       success: true,
       message: "Astrology signup successful",
@@ -160,7 +141,15 @@ if (tempChartId) {
         id: user._id,
         name: user.name,
         sessionId: user.sessionId,
-        astrologyProfile: user.astrologyProfile
+        astrologyProfile: user.astrologyProfile,
+        birthChart: birthChart
+          ? {
+              chartImage: birthChart.chartImage,
+              chartData: birthChart.chartData,
+              rashi: birthChart.rashi,
+              isTemporary: birthChart.isTemporary
+            }
+          : null
       }
     });
 
@@ -169,6 +158,7 @@ if (tempChartId) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
+
 
 
 /* ======================================================
@@ -209,11 +199,9 @@ export async function handleUserLogin(req, res) {
       maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
-    // ⭐ Fetch all birth charts linked to this user
-    const charts = await BirthChart.find({ userId: user._id, isTemporary: false }).sort({ createdAt: -1 });
-
-    // Optional: Count charts
-    const chartsCount = charts.length;
+    // ⭐ Fetch all non-temporary birth charts linked to this user
+    const charts = await BirthChart.find({ userId: user._id, isTemporary: false })
+      .sort({ createdAt: -1 });
 
     return res.json({
       success: true,
@@ -228,17 +216,19 @@ export async function handleUserLogin(req, res) {
         role: user.role,
         isBlocked: user.isBlocked,
         lastLoginAt: user.lastLoginAt,
-        sessionId: user.sessionId,  // ⭐ added
+        sessionId: user.sessionId,
         astrologyProfile: user.astrologyProfile || null,
         charts: charts.map(chart => ({
           id: chart._id,
           chartImage: chart.chartImage,
+          chartData: chart.chartData,   // ✅ full JSON data
           rashi: chart.rashi,
           createdAt: chart.createdAt
         })),
-        chartsCount
+        chartsCount: charts.length
       }
     });
+
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -251,6 +241,7 @@ export async function handleUserLogin(req, res) {
 export async function handleUserLoginWithPhone(req, res) {
   try {
     const { phone, password } = req.body;
+
     if (!phone || !password)
       return res.status(400).json({ error: "Phone and password are required" });
 
@@ -282,11 +273,9 @@ export async function handleUserLoginWithPhone(req, res) {
       maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
-    // ⭐ Fetch all birth charts linked to this user
-    const charts = await BirthChart.find({ userId: user._id, isTemporary: false }).sort({ createdAt: -1 });
-
-    // Optional: Count charts
-    const chartsCount = charts.length;
+    // ⭐ Fetch all non-temporary birth charts linked to this user
+    const charts = await BirthChart.find({ userId: user._id, isTemporary: false })
+      .sort({ createdAt: -1 });
 
     return res.json({
       success: true,
@@ -306,12 +295,14 @@ export async function handleUserLoginWithPhone(req, res) {
         charts: charts.map(chart => ({
           id: chart._id,
           chartImage: chart.chartImage,
+          chartData: chart.chartData,   // ✅ full JSON data
           rashi: chart.rashi,
           createdAt: chart.createdAt
         })),
-        chartsCount
+        chartsCount: charts.length
       }
     });
+
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -333,7 +324,8 @@ export async function getMyProfile(req, res) {
     }
 
     // Fetch all linked birth charts (non-temporary)
-    const charts = await BirthChart.find({ userId: user._id, isTemporary: false }).sort({ createdAt: -1 });
+    const charts = await BirthChart.find({ userId: user._id, isTemporary: false })
+      .sort({ createdAt: -1 });
 
     const chartsCount = charts.length;
 
@@ -355,6 +347,7 @@ export async function getMyProfile(req, res) {
         charts: charts.map(chart => ({
           id: chart._id,
           chartImage: chart.chartImage,
+          chartData: chart.chartData,   // ✅ include full JSON data
           rashi: chart.rashi,
           createdAt: chart.createdAt
         })),
