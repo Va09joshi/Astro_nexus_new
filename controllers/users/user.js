@@ -368,6 +368,136 @@ export async function getMyProfile(req, res) {
   }
 }
 
+
+/* ======================================================
+   UPDATE MY PROFILE
+====================================================== */
+export async function updateMyProfile(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const {
+      name,
+      email,
+      phone,
+      astrologyProfile // { dateOfBirth, timeOfBirth, placeOfBirth }
+    } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    /* ================= VALIDATIONS ================= */
+
+    if (email && !validator.isEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    if (phone && !validator.isMobilePhone(phone, "any")) {
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    // Check email/phone uniqueness
+    if (email && email !== user.email) {
+      const emailExists = await User.findOne({ email });
+      if (emailExists) {
+        return res.status(400).json({ error: "Email already in use" });
+      }
+    }
+
+    if (phone && phone !== user.phone) {
+      const phoneExists = await User.findOne({ phone });
+      if (phoneExists) {
+        return res.status(400).json({ error: "Phone already in use" });
+      }
+    }
+
+    /* ================= UPDATE FIELDS ================= */
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone) user.phone = phone;
+
+    if (astrologyProfile) {
+      user.astrologyProfile = {
+        ...user.astrologyProfile,
+        ...astrologyProfile
+      };
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        astrologyProfile: user.astrologyProfile,
+        profileImage: user.profileImage || null,
+        sessionId: user.sessionId
+      }
+    });
+
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+
+/* ======================================================
+   CHANGE PASSWORD
+====================================================== */
+export async function changePassword(req, res) {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    const user = await User.findById(userId).select("+password");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Old password is incorrect" });
+    }
+
+    // Prevent same password reuse
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.status(400).json({ error: "New password must be different" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully"
+    });
+
+  } catch (error) {
+    console.error("Change password error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+
 /* ======================================================
    REFRESH TOKEN
 ====================================================== */

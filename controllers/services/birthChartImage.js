@@ -66,7 +66,7 @@ const generateChartImage = async (chartData) => {
   ctx.moveTo(850, 50); ctx.lineTo(50, 850);
   ctx.stroke();
 
-  // Diamond
+  // Diamond shape
   ctx.beginPath();
   ctx.moveTo(450, 50);
   ctx.lineTo(850, 450);
@@ -77,32 +77,37 @@ const generateChartImage = async (chartData) => {
 
   ctx.textAlign = "center";
 
+  // Draw houses, zodiac, planets
   Object.entries(H).forEach(([num, pos]) => {
     const house = chartData.houses[num];
     if (!house) return;
 
     let y = pos.y - 40;
 
+    // House label
     ctx.fillStyle = "#3e2723";
     ctx.font = "bold 22px 'Segoe UI'";
     ctx.fillText(`House ${num}`, pos.x, y);
 
+    // Zodiac sign
     y += 26;
     ctx.fillStyle = "#6a1b9a";
     ctx.font = "bold 26px 'Segoe UI'";
     ctx.fillText(house.sign, pos.x, y);
 
+    // Planets
     if (house.planets.length) {
       y += 30;
       house.planets.forEach((p, i) => {
+        const symbol = planetSymbols[p] || "•";
         ctx.fillStyle = planetColors[p] || "#000";
         ctx.font = "24px 'Segoe UI Symbol'";
-        ctx.fillText(`${planetSymbols[p] || "•"} ${p}`, pos.x, y + (i * 22));
+        ctx.fillText(`${symbol} ${p}`, pos.x, y + (i * 22));
       });
     }
   });
 
-  // Ascendant
+  // Ascendant highlight
   const ascHouse = chartData.ascendant?.house;
   if (ascHouse && H[ascHouse]) {
     const { x, y } = H[ascHouse];
@@ -114,38 +119,39 @@ const generateChartImage = async (chartData) => {
     ctx.shadowBlur = 0;
   }
 
-  // ✅ CORRECT SAVE PATH
-  const dir = path.join(__dirname, "..", "charts");
+  // Save image
+  const dir = path.join(__dirname, "../controllers/charts");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
   const fileName = `chart_${Date.now()}.png`;
   const filePath = path.join(dir, fileName);
-
   fs.writeFileSync(filePath, canvas.toBuffer("image/png"));
 
-  console.log("📂 Chart image saved at:", filePath);
+    console.log("📂 Chart image saved at:", filePath);
 
-  // ✅ PUBLIC URL
   return `/charts/${fileName}`;
 };
 
-// Controller
+// Controller: Generate birth chart
 exports.generateBirthChart = async (req, res) => {
   try {
-    const body = req.body;
+    const body = req.body; // may or may not include userId
 
+    // Call Astro Nexus API
     const apiRes = await axios.post(
       "https://astro-nexus-backend-9u1s.onrender.com/api/v1/chart",
       body
     );
 
     const chartData = apiRes.data;
+
+    // Generate chart image
     const chartImage = await generateChartImage(chartData);
 
-    const rashi =
-      chartData.rashi?.toLowerCase() ||
-      chartData.ascendant?.sign?.toLowerCase();
+    // Extract rashi
+    const rashi = chartData.rashi?.toLowerCase() || chartData.ascendant?.sign?.toLowerCase();
 
+    // Save chart (temporary if no userId)
     const saved = await BirthChart.create({
       userId: body.userId || null,
       ...body,
@@ -160,6 +166,8 @@ exports.generateBirthChart = async (req, res) => {
       message: "Birth chart generated",
       data: saved
     });
+
+    console.log("📂 Chart saved at:", filePath);
 
   } catch (err) {
     console.error(err.response?.data || err.message);

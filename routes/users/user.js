@@ -9,6 +9,8 @@ import {
   handleUserLogout,
   handleUserLoginWithPhone
   , uploadProfileImage, getMyProfile
+  , updateMyProfile
+  , changePassword
    // ✅ import the new phone login
 } from "../../controllers/users/user.js";
 
@@ -41,8 +43,9 @@ router.post(
   uploadProfileImage
 );
 router.get("/me", authenticateToken, getMyProfile);
+router.put("/me", authenticateToken, updateMyProfile);
 
-
+router.post("/change-password", authenticateToken, changePassword);
 
 router.post("/verify-otp", verifyFirebaseOtp);
 

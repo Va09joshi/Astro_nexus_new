@@ -81,6 +81,8 @@ app.use(
   "/charts",
   express.static(path.join(__dirname, "controllers/charts"))
 );
+
+
 // ================= PUBLIC APIs =================
 app.use("/api/predictions", predictionsRoute);
 app.use("/api/birthchart", birthChartRoute); // Birth chart generation + DB save
