@@ -23,6 +23,8 @@ import * as addressController from "../../controllers/users/address.controller.j
 import { verifyFirebaseOtp } from "../../controllers/users/firebase_auth.js";
 import uploadProfile from "../../middlewares/upload.js";
 import * as wishlistController from "../../controllers/users/wishlistController.js";
+import { getHomeProducts } from "../../controllers/admin/admin.product.controller.js";
+
 
 
 
@@ -48,6 +50,9 @@ router.put("/me", authenticateToken, updateMyProfile);
 router.post("/change-password", authenticateToken, changePassword);
 
 router.post("/verify-otp", verifyFirebaseOtp);
+
+
+router.get("/home-products", getHomeProducts);
 
 
 // ================== CATEGORY ROUTES ==================

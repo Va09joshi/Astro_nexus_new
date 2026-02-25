@@ -1,3 +1,4 @@
+
 import Product from "../../models/shop/Product.model.js";
 import Category from "../../models/shop/Category.model.js";
 
@@ -93,6 +94,8 @@ export const getAllProducts = async (req, res) => {
     });
   }
 };
+
+
 
 /**
  * ================= GET SINGLE PRODUCT =================
@@ -216,6 +219,30 @@ export const deleteProductPermanent = async (req, res) => {
     res.json({ success: true, message: "Product permanently deleted" });
   } catch (err) {
     console.error("DELETE PRODUCT ERROR:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+export const getHomeProducts = async (req, res) => {
+  try {
+    // ✅ Get products marked for home
+    const products = await Product.find({ 
+      isActive: true, 
+      isDeleted: false, 
+      showInHome: true 
+    })
+    .sort({ createdAt: -1 }) // latest first
+    .limit(10); // optional, limit for home screen
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (err) {
+    console.error("HOME PRODUCTS ERROR:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
