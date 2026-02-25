@@ -54,17 +54,17 @@ export const createFeedback = async (req, res) => {
       });
     }
 
-    if (!userId || !user?.name) {
-  return res.status(401).json({
-    success: false,
-    message: "User information missing",
-  });
-}
+    if (!user || !user._id || !user.name) {
+      return res.status(401).json({
+        success: false,
+        message: "User information missing",
+      });
+    }
 
     // 🚫 Prevent duplicate review per user per product
     const existingReview = await Feedback.findOne({
       productId,
-      userId: userId,
+      userId: user._id,
     });
 
     if (existingReview) {
@@ -76,7 +76,7 @@ export const createFeedback = async (req, res) => {
 
     const feedback = new Feedback({
       productId,
-      userId: userId,
+      userId: user._id,
       userName: user.name,
       userDisplay: user.astrologyProfile || "",
       rating,
