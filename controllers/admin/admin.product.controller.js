@@ -226,17 +226,29 @@ export const deleteProductPermanent = async (req, res) => {
 
 export const getHomeProducts = async (req, res) => {
   try {
-    // ✅ Get active products marked for home
+    // ✅ First, get active products marked for home
     let products = await Product.find({
       isActive: true,
       isDeleted: false,
       showInHome: true
     })
-      .sort({ homePriority: -1, lastShownAt: 1, createdAt: -1 }) 
-      // higher priority first, older lastShownAt first, newest createdAt next
-      .limit(10); // optional, limit for home screen
+      .sort({ homePriority: -1, lastShownAt: 1, createdAt: -1 })
+      .limit(10);
 
-    // ✅ Update lastShownAt to rotate next time
+    // ✅ If less than 3, get fallback products
+    if (products.length < 3) {
+      const fallback = await Product.find({
+        isActive: true,
+        isDeleted: false,
+        _id: { $nin: products.map(p => p._id) }
+      })
+        .sort({ createdAt: -1 })
+        .limit(3 - products.length);
+
+      products.push(...fallback);
+    }
+
+    // ✅ Update lastShownAt for rotation
     const now = new Date();
     await Promise.all(
       products.map(p => Product.findByIdAndUpdate(p._id, { lastShownAt: now }))
