@@ -120,7 +120,7 @@ const generateChartImage = async (chartData) => {
   }
 
   // Save image
-  const dir = path.join(__dirname, "../charts");
+  const dir = path.join(__dirname, "../controllers/charts");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
   const fileName = `chart_${Date.now()}.png`;
@@ -164,6 +164,8 @@ exports.generateBirthChart = async (req, res) => {
       message: "Birth chart generated",
       data: saved
     });
+
+    console.log("📂 Chart saved at:", filePath);
 
   } catch (err) {
     console.error(err.response?.data || err.message);
