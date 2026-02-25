@@ -24,6 +24,7 @@ import { verifyFirebaseOtp } from "../../controllers/users/firebase_auth.js";
 import uploadProfile from "../../middlewares/upload.js";
 import * as wishlistController from "../../controllers/users/wishlistController.js";
 import { getHomeProducts } from "../../controllers/admin/admin.product.controller.js";
+import * as walletController from "../../controllers/wallet/walletController.js";
 
 
 
@@ -104,6 +105,17 @@ router.delete("/addresses/:addressId", authenticateToken, addressController.dele
 // ================== PAYMENT ROUTES ==================
 router.post("/payment/create", authenticateToken, paymentController.createPayment);
 router.post("/payment/verify", authenticateToken, paymentController.verifyPayment);
+
+
+router.get('/:userId', walletController.getWallet);
+
+// deposit money
+router.post('/:userId/deposit', walletController.deposit);
+
+// withdraw money
+router.post('/:userId/withdraw', walletController.withdraw);
+
+
 
 console.log("User routes loaded");
 
