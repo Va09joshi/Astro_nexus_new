@@ -226,14 +226,21 @@ export const deleteProductPermanent = async (req, res) => {
 
 export const getHomeProducts = async (req, res) => {
   try {
-    // ✅ Get products marked for home
-    const products = await Product.find({ 
-      isActive: true, 
-      isDeleted: false, 
-      showInHome: true 
+    // ✅ Get active products marked for home
+    let products = await Product.find({
+      isActive: true,
+      isDeleted: false,
+      showInHome: true
     })
-    .sort({ createdAt: -1 }) // latest first
-    .limit(10); // optional, limit for home screen
+      .sort({ homePriority: -1, lastShownAt: 1, createdAt: -1 }) 
+      // higher priority first, older lastShownAt first, newest createdAt next
+      .limit(10); // optional, limit for home screen
+
+    // ✅ Update lastShownAt to rotate next time
+    const now = new Date();
+    await Promise.all(
+      products.map(p => Product.findByIdAndUpdate(p._id, { lastShownAt: now }))
+    );
 
     res.status(200).json({
       success: true,
