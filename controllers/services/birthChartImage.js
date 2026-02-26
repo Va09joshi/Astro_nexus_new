@@ -120,7 +120,7 @@ const generateChartImage = async (chartData) => {
   }
 
   // Save image
-  const dir = path.join(__dirname, "../controllers/charts");
+  const dir = path.join(__dirname, "../charts");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
   const fileName = `chart_${Date.now()}.png`;
