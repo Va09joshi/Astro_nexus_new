@@ -36,7 +36,7 @@ const planetSymbols = {
   Pluto: "♇"
 };
 
-// Helper: Generate chart image from chartData
+// Helper: Generate chart image
 const generateChartImage = async (chartData) => {
   const H = {
     1:{x:450,y:260}, 2:{x:240,y:120}, 3:{x:105,y:250},
@@ -48,25 +48,21 @@ const generateChartImage = async (chartData) => {
   const canvas = createCanvas(900, 900);
   const ctx = canvas.getContext("2d");
 
-  // Background gradient
   const gradient = ctx.createLinearGradient(0, 0, 900, 900);
   gradient.addColorStop(0, "#fdf6e3");
   gradient.addColorStop(1, "#f1e4c6");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 900, 900);
 
-  // Frame
   ctx.strokeStyle = "#5d4037";
   ctx.lineWidth = 4;
   ctx.strokeRect(50, 50, 800, 800);
 
-  // Diagonals
   ctx.beginPath();
   ctx.moveTo(50, 50); ctx.lineTo(850, 850);
   ctx.moveTo(850, 50); ctx.lineTo(50, 850);
   ctx.stroke();
 
-  // Diamond shape
   ctx.beginPath();
   ctx.moveTo(450, 50);
   ctx.lineTo(850, 450);
@@ -77,26 +73,22 @@ const generateChartImage = async (chartData) => {
 
   ctx.textAlign = "center";
 
-  // Draw houses, zodiac, planets
   Object.entries(H).forEach(([num, pos]) => {
     const house = chartData.houses[num];
     if (!house) return;
 
     let y = pos.y - 40;
 
-    // House label
     ctx.fillStyle = "#3e2723";
     ctx.font = "bold 22px 'Segoe UI'";
     ctx.fillText(`House ${num}`, pos.x, y);
 
-    // Zodiac sign
     y += 26;
     ctx.fillStyle = "#6a1b9a";
     ctx.font = "bold 26px 'Segoe UI'";
     ctx.fillText(house.sign, pos.x, y);
 
-    // Planets
-    if (house.planets.length) {
+    if (house.planets?.length) {
       y += 30;
       house.planets.forEach((p, i) => {
         const symbol = planetSymbols[p] || "•";
@@ -107,7 +99,6 @@ const generateChartImage = async (chartData) => {
     }
   });
 
-  // Ascendant highlight
   const ascHouse = chartData.ascendant?.house;
   if (ascHouse && H[ascHouse]) {
     const { x, y } = H[ascHouse];
@@ -119,7 +110,6 @@ const generateChartImage = async (chartData) => {
     ctx.shadowBlur = 0;
   }
 
-  // Save image
   const dir = path.join(__dirname, "../charts");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
@@ -127,17 +117,16 @@ const generateChartImage = async (chartData) => {
   const filePath = path.join(dir, fileName);
   fs.writeFileSync(filePath, canvas.toBuffer("image/png"));
 
-    console.log("📂 Chart image saved at:", filePath);
+  console.log("📂 Chart image saved at:", filePath);
 
   return `/charts/${fileName}`;
 };
 
-// Controller: Generate birth chart
+// Controller
 exports.generateBirthChart = async (req, res) => {
   try {
-    const body = req.body; // may or may not include userId
+    const body = req.body;
 
-    // Call Astro Nexus API
     const apiRes = await axios.post(
       "https://astro-nexus-backend-9u1s.onrender.com/api/v1/chart",
       body
@@ -145,13 +134,12 @@ exports.generateBirthChart = async (req, res) => {
 
     const chartData = apiRes.data;
 
-    // Generate chart image
     const chartImage = await generateChartImage(chartData);
 
-    // Extract rashi
-    const rashi = chartData.rashi?.toLowerCase() || chartData.ascendant?.sign?.toLowerCase();
+    const rashi =
+      chartData.rashi?.toLowerCase() ||
+      chartData.ascendant?.sign?.toLowerCase();
 
-    // Save chart (temporary if no userId)
     const saved = await BirthChart.create({
       userId: body.userId || null,
       ...body,
@@ -161,17 +149,18 @@ exports.generateBirthChart = async (req, res) => {
       isTemporary: !body.userId
     });
 
-    res.status(201).json({
+    console.log("📂 Chart saved in DB:", saved._id);
+
+    return res.status(201).json({
       success: true,
       message: "Birth chart generated",
       data: saved
     });
 
-    console.log("📂 Chart saved at:", filePath);
-
   } catch (err) {
-    console.error(err.response?.data || err.message);
-    res.status(500).json({
+    console.error("❌ Chart generation error:", err.response?.data || err.message);
+
+    return res.status(500).json({
       success: false,
       message: "Chart generation failed",
       error: err.message
