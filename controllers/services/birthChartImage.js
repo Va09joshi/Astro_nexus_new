@@ -4,6 +4,9 @@ const path = require("path");
 const { createCanvas } = require("canvas");
 const BirthChart = require("../../models/features/birthChartModel");
 
+const DEFAULT_UPSTREAM_URL =
+  "https://astro-nexus-backend-9u1s.onrender.com/api/v1/chart";
+
 // 🌟 Planet colors
 const planetColors = {
   Sun: "#ff6600",
